@@ -106,7 +106,7 @@ export default function RevealScreen({ card, onRevealComplete }: RevealScreenPro
             >
               <div className="w-full h-full rounded-3xl card-glow overflow-hidden relative bg-transparent">
                 <Image
-                  src="/images/card_back_with_background.png"
+                  src="/images/card_back.png"
                   alt="Card Back"
                   fill
                   className="object-cover"

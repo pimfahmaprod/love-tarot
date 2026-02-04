@@ -111,7 +111,7 @@ export default function InfiniteCarousel({ cards, onSelectCard }: InfiniteCarous
                   {/* Card face-down with image */}
                   <div className="w-[160px] h-[260px] md:w-[180px] md:h-[300px] rounded-2xl overflow-hidden card-glow relative bg-transparent">
                     <Image
-                      src="/images/card_back_with_background.png"
+                      src="/images/card_back.png"
                       alt="Card Back"
                       fill
                       className="object-cover"

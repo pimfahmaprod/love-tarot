@@ -104,21 +104,17 @@ export default function RevealScreen({ card, onRevealComplete }: RevealScreenPro
                 backfaceVisibility: 'hidden',
               }}
             >
-              <div
-                className="w-full h-full rounded-3xl card-glow"
-                style={{
-                  background: 'linear-gradient(135deg, #FFB6C1 0%, #FF69B4 50%, #FFB6C1 100%)',
-                  border: '4px solid #FFD700',
-                }}
-              >
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-9xl text-valentine-gold/50">♥</div>
-                </div>
-                <div
-                  className="absolute inset-0 rounded-3xl"
+              <div className="w-full h-full rounded-3xl card-glow overflow-hidden relative bg-transparent">
+                <Image
+                  src="/images/card_back_with_background.png"
+                  alt="Card Back"
+                  fill
+                  className="object-cover"
                   style={{
-                    backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255, 255, 255, 0.1) 10px, rgba(255, 255, 255, 0.1) 20px)',
+                    objectPosition: 'center',
+                    scale: '1.15',
                   }}
+                  priority
                 />
               </div>
             </motion.div>

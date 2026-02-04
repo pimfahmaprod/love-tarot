@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import { TarotCard } from '@/types/tarot';
 import { getRandomCardOffset } from '@/lib/tarotAdapter';
 
@@ -107,33 +108,19 @@ export default function InfiniteCarousel({ cards, onSelectCard }: InfiniteCarous
                 onClick={() => handleCardClick(card, index)}
               >
                 <div className="relative">
-                  {/* Card face-down */}
-                  <div
-                    className="w-[160px] h-[260px] md:w-[180px] md:h-[300px] rounded-2xl overflow-hidden card-glow"
-                    style={{
-                      background: 'linear-gradient(135deg, #FFB6C1 0%, #FF69B4 50%, #FFB6C1 100%)',
-                      border: '3px solid #FFD700',
-                    }}
-                  >
-                    {/* Card back pattern */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      {/* Large heart in center */}
-                      <div className="text-8xl text-valentine-gold/50">♥</div>
-                    </div>
-
-                    {/* Decorative pattern overlay */}
-                    <div
-                      className="absolute inset-0"
+                  {/* Card face-down with image */}
+                  <div className="w-[160px] h-[260px] md:w-[180px] md:h-[300px] rounded-2xl overflow-hidden card-glow relative bg-transparent">
+                    <Image
+                      src="/images/card_back_with_background.png"
+                      alt="Card Back"
+                      fill
+                      className="object-cover"
                       style={{
-                        backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255, 255, 255, 0.1) 10px, rgba(255, 255, 255, 0.1) 20px)',
+                        objectPosition: 'center',
+                        scale: '1.15',
                       }}
+                      priority
                     />
-
-                    {/* Corner hearts */}
-                    <div className="absolute top-4 left-4 text-2xl text-valentine-gold/70">♥</div>
-                    <div className="absolute top-4 right-4 text-2xl text-valentine-gold/70">♥</div>
-                    <div className="absolute bottom-4 left-4 text-2xl text-valentine-gold/70">♥</div>
-                    <div className="absolute bottom-4 right-4 text-2xl text-valentine-gold/70">♥</div>
 
                     {/* Shine effect */}
                     <motion.div

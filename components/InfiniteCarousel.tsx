@@ -15,6 +15,12 @@ export default function InfiniteCarousel({ cards, onSelectCard }: InfiniteCarous
   const carouselRef = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState(0);
   const [isScrolling, setIsScrolling] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [currentX, setCurrentX] = useState(0);
+  const [velocity, setVelocity] = useState(0);
+  const [lastX, setLastX] = useState(0);
+  const [lastTime, setLastTime] = useState(0);
   const [cardOffsets] = useState(() =>
     // Generate random vertical offsets for each card (only once)
     cards.map(() => getRandomCardOffset())
@@ -26,28 +32,34 @@ export default function InfiniteCarousel({ cards, onSelectCard }: InfiniteCarous
   // Triple the cards for infinite loop effect
   const tripleCards = [...cards, ...cards, ...cards];
 
+  // Auto-scroll effect
   useEffect(() => {
-    if (!isScrolling) return;
+    if (!isScrolling || isDragging) return;
 
     const intervalId = setInterval(() => {
       setOffset((prev) => {
         const newOffset = prev - SCROLL_SPEED;
-        const singleSetWidth = cards.length * CARD_WIDTH;
-
-        // Seamless loop: when we scroll past the middle set, reset to the middle
-        // We start at -singleSetWidth (middle set)
-        // When we reach -singleSetWidth * 1.5, we're halfway through the third set
-        // Reset to -singleSetWidth * 0.5 (halfway through first set) for seamless loop
-        if (newOffset <= -singleSetWidth * 1.5) {
-          return -singleSetWidth * 0.5;
-        }
-
-        return newOffset;
+        return checkLoopBoundary(newOffset);
       });
     }, 16); // ~60fps
 
     return () => clearInterval(intervalId);
-  }, [isScrolling, cards.length, CARD_WIDTH]);
+  }, [isScrolling, isDragging, cards.length, CARD_WIDTH]);
+
+  // Momentum effect
+  useEffect(() => {
+    if (isDragging || Math.abs(velocity) < 0.1) return;
+
+    const intervalId = setInterval(() => {
+      setVelocity((v) => v * 0.95); // Deceleration
+      setOffset((prev) => {
+        const newOffset = prev + velocity;
+        return checkLoopBoundary(newOffset);
+      });
+    }, 16);
+
+    return () => clearInterval(intervalId);
+  }, [velocity, isDragging, cards.length, CARD_WIDTH]);
 
   // Initialize starting position at the middle set
   useEffect(() => {
@@ -55,9 +67,71 @@ export default function InfiniteCarousel({ cards, onSelectCard }: InfiniteCarous
     setOffset(-singleSetWidth);
   }, [cards.length, CARD_WIDTH]);
 
+  // Check and handle infinite loop boundaries
+  const checkLoopBoundary = (newOffset: number) => {
+    const singleSetWidth = cards.length * CARD_WIDTH;
+    const minOffset = -singleSetWidth * 1.5;
+    const maxOffset = -singleSetWidth * 0.5;
+
+    if (newOffset <= minOffset) {
+      return newOffset + singleSetWidth;
+    } else if (newOffset >= maxOffset) {
+      return newOffset - singleSetWidth;
+    }
+    return newOffset;
+  };
+
+  // Touch/Mouse handlers
+  const handleStart = (e: React.MouseEvent | React.TouchEvent) => {
+    setIsDragging(true);
+    setIsScrolling(false);
+    setVelocity(0);
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    setStartX(clientX);
+    setCurrentX(clientX);
+    setLastX(clientX);
+    setLastTime(Date.now());
+  };
+
+  const handleMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDragging) return;
+
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const deltaX = clientX - currentX;
+    setCurrentX(clientX);
+
+    setOffset((prev) => checkLoopBoundary(prev + deltaX));
+
+    // Calculate velocity
+    const now = Date.now();
+    const timeDelta = now - lastTime;
+    if (timeDelta > 0) {
+      setVelocity((clientX - lastX) / timeDelta * 16); // Normalize to 60fps
+    }
+    setLastX(clientX);
+    setLastTime(now);
+  };
+
+  const handleEnd = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+
+    // Restart auto-scroll after delay
+    setTimeout(() => {
+      setIsScrolling(true);
+      setVelocity(0);
+    }, 2000);
+  };
+
   const handleCardClick = (card: TarotCard, index: number) => {
+    // Ignore clicks during drag
+    if (Math.abs(currentX - startX) > 5) return;
+
     // Stop scrolling
     setIsScrolling(false);
+    setIsDragging(false);
+    setVelocity(0);
 
     // Find which set this card belongs to (we only care about the original card data)
     const originalIndex = index % cards.length;
@@ -86,11 +160,18 @@ export default function InfiniteCarousel({ cards, onSelectCard }: InfiniteCarous
       <div className="w-full overflow-hidden py-20">
         <motion.div
           ref={carouselRef}
-          className="flex gap-6 px-6"
+          className="flex gap-6 px-6 cursor-grab active:cursor-grabbing"
           style={{
             transform: `translateX(${offset}px)`,
           }}
           transition={{ type: 'linear' }}
+          onMouseDown={handleStart}
+          onMouseMove={handleMove}
+          onMouseUp={handleEnd}
+          onMouseLeave={handleEnd}
+          onTouchStart={handleStart}
+          onTouchMove={handleMove}
+          onTouchEnd={handleEnd}
         >
           {tripleCards.map((card, index) => {
             // Get the offset for this card (loop through the original offsets)

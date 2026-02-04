@@ -8,7 +8,7 @@ import { getAllTarotCards, shuffleCards } from '@/lib/tarotAdapter';
 // Components
 import LandingScreen from '@/components/LandingScreen';
 import InstructionScreen from '@/components/InstructionScreen';
-import InfiniteCarousel from '@/components/InfiniteCarousel';
+import GridCarousel from '@/components/GridCarousel';
 import RevealScreen from '@/components/RevealScreen';
 import ResultScreen from '@/components/ResultScreen';
 
@@ -72,7 +72,7 @@ export default function Home() {
         )}
 
         {currentScreen === 'selection' && shuffledCards.length > 0 && (
-          <InfiniteCarousel
+          <GridCarousel
             key="selection"
             cards={shuffledCards}
             onSelectCard={handleSelectCard}

@@ -1,11 +1,770 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hello World</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Love Tarot - จับไพ่ทาโรต์</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow: hidden;
+            touch-action: pan-y;
+        }
+
+        /* Loading Screen */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+
+        .loading-screen.fade-out {
+            opacity: 0;
+            transform: scale(1.1);
+            pointer-events: none;
+        }
+
+        .loading-content {
+            text-align: center;
+            animation: fadeInUp 1s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .loading-icon {
+            font-size: 80px;
+            margin-bottom: 30px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            25% {
+                transform: translateY(-20px) rotate(5deg);
+            }
+            50% {
+                transform: translateY(0) rotate(0deg);
+            }
+            75% {
+                transform: translateY(-10px) rotate(-5deg);
+            }
+        }
+
+        .loading-title {
+            color: white;
+            font-size: 32px;
+            font-weight: 300;
+            letter-spacing: 5px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .loading-subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            letter-spacing: 3px;
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        .loading-spinner {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .spinner-dot {
+            width: 12px;
+            height: 12px;
+            background: rgba(255, 215, 0, 0.8);
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .spinner-dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .spinner-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .spinner-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+        }
+
+        .app-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 1s ease, transform 1s ease;
+        }
+
+        .app-container.show {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            z-index: 10;
+            opacity: 0;
+            transform: translateY(-50px);
+            transition: opacity 0.8s ease 0.3s, transform 0.8s ease 0.3s;
+        }
+
+        .app-container.show .header {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 24px;
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .instruction {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            margin-top: 8px;
+            font-weight: 300;
+        }
+
+        .carousel-container {
+            width: 100%;
+            height: 60vh;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            cursor: grab;
+            user-select: none;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: opacity 0.8s ease 0.5s, transform 0.8s ease 0.5s;
+        }
+
+        .app-container.show .carousel-container {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .carousel-container:active {
+            cursor: grabbing;
+        }
+
+        .carousel {
+            display: flex;
+            gap: 20px;
+            position: absolute;
+            left: 0;
+            transition: none;
+            will-change: transform;
+        }
+
+        .carousel.animating {
+            transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .card {
+            min-width: 180px;
+            width: 180px;
+            height: 300px;
+            border-radius: 15px;
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+            perspective: 1000px;
+            transition: transform 0.3s ease;
+            opacity: 0;
+            transform: translateY(30px) rotateX(20deg);
+            animation: cardEntrance 0.6s ease forwards;
+        }
+
+        @keyframes cardEntrance {
+            to {
+                opacity: 1;
+                transform: translateY(0) rotateX(0);
+            }
+        }
+
+        .card:hover {
+            transform: translateY(-10px) scale(1.05);
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.8s;
+            transform-style: preserve-3d;
+        }
+
+        .card.flipping .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-back::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .card-back::after {
+            content: '🌙';
+            font-size: 60px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.8;
+        }
+
+        .card-back .pattern {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image:
+                repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255, 215, 0, 0.05) 10px, rgba(255, 215, 0, 0.05) 20px),
+                repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(255, 215, 0, 0.05) 10px, rgba(255, 215, 0, 0.05) 20px);
+        }
+
+        .card-back .stars {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 20px;
+            opacity: 0.6;
+        }
+
+        .card-back .bottom-text {
+            position: absolute;
+            bottom: 20px;
+            color: rgba(255, 215, 0, 0.8);
+            font-size: 12px;
+            letter-spacing: 3px;
+            font-weight: 300;
+        }
+
+        .card-front {
+            background: white;
+            transform: rotateY(180deg);
+        }
+
+        .card-front img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 15px;
+        }
+
+        .card-name {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+            color: white;
+            padding: 15px 10px;
+            font-size: 12px;
+            text-align: center;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        /* Selected Card View */
+        .selected-card-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .selected-card-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .selected-card-content {
+            max-width: 90%;
+            max-height: 90%;
+            text-align: center;
+            transform: scale(0.5) rotateY(180deg);
+            transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            opacity: 0;
+        }
+
+        .selected-card-overlay.show .selected-card-content {
+            transform: scale(1) rotateY(0deg);
+            opacity: 1;
+        }
+
+        .selected-card-image {
+            max-width: 300px;
+            width: 90vw;
+            height: auto;
+            max-height: 60vh;
+            object-fit: contain;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(255, 215, 0, 0.3);
+            margin-bottom: 20px;
+            animation: cardGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes cardGlow {
+            from {
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(255, 215, 0, 0.3);
+            }
+            to {
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 150px rgba(255, 215, 0, 0.5);
+            }
+        }
+
+        .selected-card-name {
+            color: white;
+            font-size: 24px;
+            font-weight: 300;
+            letter-spacing: 3px;
+            margin-bottom: 30px;
+        }
+
+        .close-button {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 12px 40px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        .close-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(255, 255, 255, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .card {
+                min-width: 150px;
+                width: 150px;
+                height: 250px;
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .instruction {
+                font-size: 12px;
+            }
+
+            .carousel-container {
+                height: 50vh;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .card {
+                min-width: 130px;
+                width: 130px;
+                height: 220px;
+            }
+
+            .card-name {
+                font-size: 10px;
+                padding: 10px 5px;
+            }
+
+            .card-back::after {
+                font-size: 50px;
+            }
+
+            .card-back .stars {
+                font-size: 16px;
+            }
+
+            .card-back .bottom-text {
+                font-size: 10px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Hello World</h1>
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-content">
+            <div class="loading-icon">🌙✨</div>
+            <h1 class="loading-title">LOVE TAROT</h1>
+            <p class="loading-subtitle">กำลังเตรียมไพ่...</p>
+            <div class="loading-spinner">
+                <div class="spinner-dot"></div>
+                <div class="spinner-dot"></div>
+                <div class="spinner-dot"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container" id="appContainer">
+        <div class="header">
+            <h1>🌙 LOVE TAROT 🌙</h1>
+            <p class="instruction">เลือกไพ่ที่ใจคุณรู้สึก หรือ swipe เพื่อดูไพ่เพิ่มเติม</p>
+        </div>
+
+        <div class="carousel-container" id="carouselContainer">
+            <div class="carousel" id="carousel">
+                <!-- Cards will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Selected Card Overlay -->
+    <div class="selected-card-overlay" id="selectedCardOverlay">
+        <div class="selected-card-content">
+            <img id="selectedCardImage" class="selected-card-image" src="" alt="">
+            <h2 class="selected-card-name" id="selectedCardName"></h2>
+            <button class="close-button" onclick="closeSelectedCard()">กลับ</button>
+        </div>
+    </div>
+
+    <script>
+        let tarotCards = [];
+        let currentOffset = 0;
+        let isDragging = false;
+        let startX = 0;
+        let currentX = 0;
+        let velocity = 0;
+        let lastTimestamp = 0;
+        let autoScrollInterval;
+        const AUTO_SCROLL_SPEED = 0.5; // pixels per frame
+        const MOMENTUM_FRICTION = 0.95;
+        const SNAP_THRESHOLD = 0.1;
+
+        const carousel = document.getElementById('carousel');
+        const carouselContainer = document.getElementById('carouselContainer');
+        const selectedCardOverlay = document.getElementById('selectedCardOverlay');
+
+        // Load tarot cards data
+        async function loadTarotCards() {
+            try {
+                const response = await fetch('tarot_cards.json');
+                const data = await response.json();
+                tarotCards = data.tarot_cards;
+                initializeCarousel();
+                return true;
+            } catch (error) {
+                console.error('Error loading tarot cards:', error);
+                return false;
+            }
+        }
+
+        // Shuffle array (Fisher-Yates algorithm)
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        // Initialize carousel with shuffled cards
+        function initializeCarousel() {
+            const shuffledCards = shuffleArray(tarotCards);
+
+            // Duplicate cards for infinite scroll effect
+            const displayCards = [...shuffledCards, ...shuffledCards, ...shuffledCards];
+
+            carousel.innerHTML = displayCards.map((card, index) => {
+                const cardId = card.card_id.replace('Card_Tarot_', '');
+                const delay = (index % shuffledCards.length) * 0.03; // Stagger animation for first set
+                return `
+                    <div class="card" data-card-id="${card.card_id}" data-card-name="${card.card_name}" style="animation-delay: ${delay}s">
+                        <div class="card-inner">
+                            <div class="card-face card-back">
+                                <div class="pattern"></div>
+                                <div class="stars">✨ ⭐ ✨</div>
+                                <div class="bottom-text">TAROT</div>
+                            </div>
+                            <div class="card-face card-front">
+                                <img src="images/tarot/${card.card_name}.png" alt="${card.card_name}">
+                                <div class="card-name">${card.card_name}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Add click event to all cards
+            document.querySelectorAll('.card').forEach(card => {
+                card.addEventListener('click', () => selectCard(card));
+            });
+
+            // Start at middle set
+            const cardWidth = 180 + 20; // card width + gap
+            currentOffset = -(shuffledCards.length * cardWidth);
+            updateCarouselPosition(false);
+
+            startAutoScroll();
+        }
+
+        // Auto scroll functionality
+        function startAutoScroll() {
+            let lastTime = performance.now();
+
+            function animate(currentTime) {
+                if (!isDragging && Math.abs(velocity) < SNAP_THRESHOLD) {
+                    const deltaTime = currentTime - lastTime;
+                    const movement = AUTO_SCROLL_SPEED * (deltaTime / 16); // Normalize to 60fps
+                    currentOffset -= movement;
+
+                    // Check if we need to loop
+                    checkAndLoopCarousel();
+
+                    updateCarouselPosition(false);
+                }
+
+                lastTime = currentTime;
+                requestAnimationFrame(animate);
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Check and loop carousel for infinite scroll
+        function checkAndLoopCarousel() {
+            const cardWidth = 180 + 20;
+            const setWidth = tarotCards.length * cardWidth;
+
+            if (currentOffset < -(setWidth * 2)) {
+                currentOffset += setWidth;
+            } else if (currentOffset > -setWidth) {
+                currentOffset -= setWidth;
+            }
+        }
+
+        // Update carousel position
+        function updateCarouselPosition(animate = true) {
+            if (animate) {
+                carousel.classList.add('animating');
+            } else {
+                carousel.classList.remove('animating');
+            }
+            carousel.style.transform = `translateX(${currentOffset}px)`;
+        }
+
+        // Touch/Mouse event handlers
+        function handleStart(e) {
+            isDragging = true;
+            startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            currentX = startX;
+            velocity = 0;
+            lastTimestamp = Date.now();
+            carousel.classList.remove('animating');
+        }
+
+        function handleMove(e) {
+            if (!isDragging) return;
+
+            e.preventDefault();
+            const x = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+            const deltaX = x - currentX;
+            const deltaTime = Date.now() - lastTimestamp;
+
+            currentOffset += deltaX;
+            velocity = deltaX / Math.max(deltaTime, 1) * 16; // pixels per frame at 60fps
+
+            currentX = x;
+            lastTimestamp = Date.now();
+
+            checkAndLoopCarousel();
+            updateCarouselPosition(false);
+        }
+
+        function handleEnd(e) {
+            if (!isDragging) return;
+            isDragging = false;
+
+            // Apply momentum
+            applyMomentum();
+        }
+
+        // Apply momentum physics
+        function applyMomentum() {
+            if (Math.abs(velocity) < SNAP_THRESHOLD) {
+                velocity = 0;
+                return;
+            }
+
+            currentOffset += velocity;
+            velocity *= MOMENTUM_FRICTION;
+
+            checkAndLoopCarousel();
+            updateCarouselPosition(false);
+
+            requestAnimationFrame(applyMomentum);
+        }
+
+        // Event listeners
+        carouselContainer.addEventListener('mousedown', handleStart);
+        carouselContainer.addEventListener('mousemove', handleMove);
+        carouselContainer.addEventListener('mouseup', handleEnd);
+        carouselContainer.addEventListener('mouseleave', handleEnd);
+
+        carouselContainer.addEventListener('touchstart', handleStart, { passive: false });
+        carouselContainer.addEventListener('touchmove', handleMove, { passive: false });
+        carouselContainer.addEventListener('touchend', handleEnd);
+
+        // Select and display a card
+        function selectCard(cardElement) {
+            const cardName = cardElement.dataset.cardName;
+            const cardId = cardElement.dataset.cardId;
+
+            // Add flip animation to the clicked card
+            cardElement.classList.add('flipping');
+
+            // Wait for flip animation, then show overlay
+            setTimeout(() => {
+                document.getElementById('selectedCardImage').src = `images/tarot/${cardName}.png`;
+                document.getElementById('selectedCardName').textContent = cardName;
+                selectedCardOverlay.classList.add('show');
+
+                // Remove flip class after overlay is shown
+                setTimeout(() => {
+                    cardElement.classList.remove('flipping');
+                }, 300);
+            }, 400);
+        }
+
+        // Close selected card view
+        function closeSelectedCard() {
+            selectedCardOverlay.classList.remove('show');
+        }
+
+        // Close on overlay click
+        selectedCardOverlay.addEventListener('click', (e) => {
+            if (e.target === selectedCardOverlay) {
+                closeSelectedCard();
+            }
+        });
+
+        // Initialize app with loading screen
+        async function initApp() {
+            const loadingScreen = document.getElementById('loadingScreen');
+            const appContainer = document.getElementById('appContainer');
+            const startTime = Date.now();
+
+            // Load tarot cards
+            await loadTarotCards();
+
+            // Ensure minimum 1 second loading time
+            const elapsedTime = Date.now() - startTime;
+            const remainingTime = Math.max(1000 - elapsedTime, 0);
+
+            setTimeout(() => {
+                // Fade out loading screen
+                loadingScreen.classList.add('fade-out');
+
+                // Show app container with entrance animation
+                setTimeout(() => {
+                    loadingScreen.style.display = 'none';
+                    appContainer.classList.add('show');
+                }, 800);
+            }, remainingTime);
+        }
+
+        initApp();
+    </script>
 </body>
 </html>

@@ -186,6 +186,11 @@ function toggleMute(e) {
     isMuted = !isMuted;
     audio.muted = isMuted;
 
+    // Track music toggle
+    if (window.cardCounter) {
+        window.cardCounter.trackMusicToggle(isMuted);
+    }
+
     console.log('Mute toggled:', isMuted);
 
     if (muteIconEl && unmuteIconEl) {
@@ -487,6 +492,12 @@ function startExperience() {
     // Don't allow starting if page is not ready yet
     if (!isPageReady) {
         return;
+    }
+
+    // Track journey step: landing to main
+    if (window.cardCounter) {
+        window.cardCounter.trackJourneyStep('landing');
+        window.cardCounter.trackDeviceType();
     }
 
     // Play music on first user interaction (guaranteed to work)
@@ -906,6 +917,15 @@ function selectCard(cardId, cardElement) {
     const rotationMatch = currentRotation.match(/rotate\(([-\d.]+)deg\)/);
     const rotationDeg = rotationMatch ? parseFloat(rotationMatch[1]) : 0;
 
+    // Track card pick journey and timing
+    if (window.cardCounter) {
+        window.cardCounter.trackJourneyStep('pick');
+        window.cardCounter.trackTimeToFirstPick();
+        // Track card position (convert rotation to angle on circle)
+        const cardAngle = (rotationDeg - 90 + 360) % 360;
+        window.cardCounter.trackCardPosition(cardAngle);
+    }
+
     // Step 1: Add selecting class for golden glow
     cardElement.classList.add('selecting');
 
@@ -961,6 +981,11 @@ function selectCard(cardId, cardElement) {
                 // Track card pick in Firebase
                 if (window.cardCounter && window.cardCounter.increment) {
                     window.cardCounter.increment(card.id, card.name, getUserId());
+                }
+
+                // Track journey step: result
+                if (window.cardCounter) {
+                    window.cardCounter.trackJourneyStep('result');
                 }
 
                 // Check if this card has comments and update button visibility
@@ -1156,6 +1181,10 @@ function toggleCommentForm() {
     btn.classList.toggle('active');
 
     if (form.classList.contains('show')) {
+        // Track comment form opened
+        if (window.cardCounter) {
+            window.cardCounter.trackCommentFormStart();
+        }
         // Check if name is already saved
         if (savedName && nameGroup) {
             nameGroup.style.display = 'none';
@@ -1163,6 +1192,11 @@ function toggleCommentForm() {
             nameGroup.style.display = 'block';
         }
     } else {
+        // Track comment form abandoned (if had content)
+        const commentInput = document.getElementById('commentText');
+        if (commentInput && commentInput.value.trim() && window.cardCounter) {
+            window.cardCounter.trackCommentFormAbandon();
+        }
         // Reset form when closing
         resetCommentForm();
     }
@@ -1271,6 +1305,38 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('commentCharCount').textContent = commentInput.value.length;
         });
     }
+
+    // Track interpretation scroll depth
+    const resultPanel = document.getElementById('resultPanel');
+    if (resultPanel) {
+        let maxScrollTracked = 0;
+        resultPanel.addEventListener('scroll', () => {
+            const scrollTop = resultPanel.scrollTop;
+            const scrollHeight = resultPanel.scrollHeight - resultPanel.clientHeight;
+            if (scrollHeight > 0) {
+                const scrollPercent = Math.round((scrollTop / scrollHeight) * 100);
+                // Only track when reaching new milestones (25%, 50%, 75%, 100%)
+                const milestones = [25, 50, 75, 100];
+                for (const milestone of milestones) {
+                    if (scrollPercent >= milestone && maxScrollTracked < milestone) {
+                        maxScrollTracked = milestone;
+                        if (window.cardCounter) {
+                            window.cardCounter.trackInterpretationScroll(milestone);
+                        }
+                    }
+                }
+            }
+        });
+        // Reset max scroll when panel closes (detected by class change)
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class' && !resultPanel.classList.contains('active')) {
+                    maxScrollTracked = 0;
+                }
+            });
+        });
+        observer.observe(resultPanel, { attributes: true });
+    }
 });
 
 async function submitComment() {
@@ -1319,6 +1385,11 @@ async function submitComment() {
         );
 
         if (result.success) {
+            // Track comment form submitted
+            if (window.cardCounter) {
+                window.cardCounter.trackCommentFormSubmit();
+            }
+
             // Save name for future comments
             saveUserName(userName);
 
@@ -1399,6 +1470,11 @@ function initCommentsPanel() {
             // Update active tab
             commentsTabs.querySelectorAll('.comments-tab').forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
+
+            // Track tab switch
+            if (window.cardCounter) {
+                window.cardCounter.trackCommentsPanel('tabSwitch_' + tabName);
+            }
 
             // Switch tab content
             currentCommentsTab = tabName;
@@ -1482,6 +1558,11 @@ function openCommentsPanel() {
     commentsOverlay.classList.add('show');
     document.body.style.overflow = 'hidden';
 
+    // Track comments panel opened
+    if (window.cardCounter) {
+        window.cardCounter.trackCommentsPanel('opened');
+    }
+
     // Update user name display
     updateCommentsPanelUser();
 
@@ -1556,6 +1637,11 @@ function closeCommentsPanel() {
     commentsPanel.classList.remove('show');
     commentsOverlay.classList.remove('show');
     document.body.style.overflow = '';
+
+    // Track comments panel closed
+    if (window.cardCounter) {
+        window.cardCounter.trackCommentsPanel('closed');
+    }
 
     // Reset expanded card state
     expandedCommentCard = null;
@@ -3042,6 +3128,12 @@ waitForResources();
 
         rankingPanel.classList.add('show');
         rankingOverlay.classList.add('show');
+
+        // Track ranking panel opened
+        if (window.cardCounter) {
+            window.cardCounter.trackRankingPanel('opened');
+        }
+
         await loadRankings();
     });
 
@@ -3051,6 +3143,11 @@ waitForResources();
     function closeRankingPanel() {
         rankingPanel.classList.remove('show');
         rankingOverlay.classList.remove('show');
+
+        // Track ranking panel closed
+        if (window.cardCounter) {
+            window.cardCounter.trackRankingPanel('closed');
+        }
     }
 
     // Load and display rankings
@@ -3191,6 +3288,12 @@ waitForResources();
             loadSaveFormatStats(),
             loadShareStats(),
             loadSocialStats(),
+            loadJourneyFunnel(),
+            loadTimeToPickStats(),
+            loadDeviceStats(),
+            loadFeatureUsageStats(),
+            loadPositionHeatmap(),
+            loadScrollDepthStats(),
             loadHotComments()
         ]);
     }
@@ -3486,6 +3589,349 @@ waitForResources();
 
         } catch (error) {
             console.error('Error loading hot comments:', error);
+            container.innerHTML = '<div class="analytics-empty">เกิดข้อผิดพลาด</div>';
+        }
+    }
+
+    // Load user journey funnel
+    async function loadJourneyFunnel() {
+        const container = document.getElementById('journeyFunnel');
+
+        try {
+            const database = firebase.database();
+            const snapshot = await database.ref('analytics/journey').once('value');
+            const data = snapshot.val();
+
+            if (!data) {
+                container.innerHTML = '<div class="analytics-empty">ยังไม่มีข้อมูล</div>';
+                return;
+            }
+
+            const steps = [
+                { key: 'landing', label: 'Landing Page' },
+                { key: 'pick', label: 'Card Pick' },
+                { key: 'result', label: 'View Result' }
+            ];
+
+            const landingCount = data.landing || 0;
+
+            let html = '';
+            steps.forEach(step => {
+                const value = data[step.key] || 0;
+                const percentage = landingCount > 0 ? ((value / landingCount) * 100).toFixed(1) : 0;
+                const barWidth = landingCount > 0 ? (value / landingCount) * 100 : 0;
+
+                html += `
+                    <div class="funnel-step" style="--bar-width: ${barWidth}%">
+                        <span class="funnel-step-label">${step.label}</span>
+                        <span class="funnel-step-value">${value.toLocaleString('th-TH')}</span>
+                        <span class="funnel-step-percent">${percentage}%</span>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+
+            // Apply bar widths after render
+            setTimeout(() => {
+                container.querySelectorAll('.funnel-step').forEach(el => {
+                    const width = el.style.getPropertyValue('--bar-width');
+                    el.style.setProperty('--bar-width', width);
+                    el.querySelector('::before')?.style?.setProperty('width', width);
+                });
+            }, 100);
+
+        } catch (error) {
+            console.error('Error loading journey funnel:', error);
+            container.innerHTML = '<div class="analytics-empty">เกิดข้อผิดพลาด</div>';
+        }
+    }
+
+    // Load time to first pick statistics
+    async function loadTimeToPickStats() {
+        const container = document.getElementById('timeToPickChart');
+
+        try {
+            const database = firebase.database();
+            const snapshot = await database.ref('analytics/timeToFirstPick').once('value');
+            const data = snapshot.val();
+
+            if (!data) {
+                container.innerHTML = '<div class="analytics-empty">ยังไม่มีข้อมูล</div>';
+                return;
+            }
+
+            const buckets = [
+                { key: 'instant', label: '< 5s', class: 'instant' },
+                { key: 'quick', label: '5-9s', class: 'quick' },
+                { key: 'normal', label: '10-29s', class: 'normal' },
+                { key: 'medium', label: '30-59s', class: 'medium' },
+                { key: 'slow', label: '60s+', class: 'slow' }
+            ];
+
+            const maxValue = Math.max(...buckets.map(b => data[b.key] || 0), 1);
+
+            let html = '<div class="chart-bar-container">';
+            buckets.forEach(bucket => {
+                const value = data[bucket.key] || 0;
+                const percentage = ((value / maxValue) * 100).toFixed(0);
+
+                html += `
+                    <div class="chart-bar-item">
+                        <div class="chart-bar-label">${bucket.label}</div>
+                        <div class="chart-bar">
+                            <div class="chart-bar-fill ${bucket.class}" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="chart-bar-value">${value.toLocaleString('th-TH')}</div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            container.innerHTML = html;
+
+        } catch (error) {
+            console.error('Error loading time to pick stats:', error);
+            container.innerHTML = '<div class="analytics-empty">เกิดข้อผิดพลาด</div>';
+        }
+    }
+
+    // Load device breakdown statistics
+    async function loadDeviceStats() {
+        const container = document.getElementById('deviceStatsGrid');
+
+        try {
+            const database = firebase.database();
+            const snapshot = await database.ref('analytics/devices').once('value');
+            const data = snapshot.val();
+
+            if (!data) {
+                container.innerHTML = '<div class="analytics-empty">ยังไม่มีข้อมูล</div>';
+                return;
+            }
+
+            const devices = [
+                {
+                    key: 'mobile',
+                    label: 'Mobile',
+                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>'
+                },
+                {
+                    key: 'tablet',
+                    label: 'Tablet',
+                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>'
+                },
+                {
+                    key: 'desktop',
+                    label: 'Desktop',
+                    icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>'
+                }
+            ];
+
+            const total = devices.reduce((sum, d) => sum + (data[d.key] || 0), 0);
+
+            let html = '';
+            devices.forEach(device => {
+                const value = data[device.key] || 0;
+                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+
+                html += `
+                    <div class="device-stat">
+                        <div class="device-icon">${device.icon}</div>
+                        <div class="device-name">${device.label}</div>
+                        <div class="device-value">${value.toLocaleString('th-TH')}</div>
+                        <div class="device-percent">${percentage}%</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+
+        } catch (error) {
+            console.error('Error loading device stats:', error);
+            container.innerHTML = '<div class="analytics-empty">เกิดข้อผิดพลาด</div>';
+        }
+    }
+
+    // Load feature usage statistics
+    async function loadFeatureUsageStats() {
+        const container = document.getElementById('featureUsageGrid');
+
+        try {
+            const database = firebase.database();
+            const snapshot = await database.ref('analytics/features').once('value');
+            const data = snapshot.val();
+
+            if (!data) {
+                container.innerHTML = '<div class="analytics-empty">ยังไม่มีข้อมูล</div>';
+                return;
+            }
+
+            const features = [
+                {
+                    key: 'music',
+                    label: 'Music Control',
+                    actions: ['muted', 'unmuted']
+                },
+                {
+                    key: 'commentsPanel',
+                    label: 'Comments Panel',
+                    actions: ['opened', 'closed']
+                },
+                {
+                    key: 'rankingPanel',
+                    label: 'Ranking Panel',
+                    actions: ['opened', 'closed']
+                },
+                {
+                    key: 'commentForm',
+                    label: 'Comment Form',
+                    actions: ['started', 'submitted', 'abandoned']
+                }
+            ];
+
+            let html = '';
+            features.forEach(feature => {
+                const featureData = data[feature.key] || {};
+                const total = Object.values(featureData).reduce((sum, v) => sum + (v || 0), 0);
+
+                let actionsHtml = '';
+                feature.actions.forEach(action => {
+                    const value = featureData[action] || 0;
+                    actionsHtml += `
+                        <div class="feature-action">
+                            <span>${action}</span>
+                            <span>${value.toLocaleString('th-TH')}</span>
+                        </div>
+                    `;
+                });
+
+                html += `
+                    <div class="feature-item">
+                        <div class="feature-header">
+                            <span class="feature-name">${feature.label}</span>
+                            <span class="feature-total">${total.toLocaleString('th-TH')} total</span>
+                        </div>
+                        <div class="feature-breakdown">
+                            ${actionsHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+
+        } catch (error) {
+            console.error('Error loading feature usage stats:', error);
+            container.innerHTML = '<div class="analytics-empty">เกิดข้อผิดพลาด</div>';
+        }
+    }
+
+    // Load position heatmap
+    async function loadPositionHeatmap() {
+        const container = document.getElementById('positionHeatmap');
+
+        try {
+            const database = firebase.database();
+            const snapshot = await database.ref('analytics/cardPositions').once('value');
+            const data = snapshot.val();
+
+            if (!data) {
+                container.innerHTML = '<div class="analytics-empty">ยังไม่มีข้อมูล</div>';
+                return;
+            }
+
+            const positions = [
+                { key: 'top', label: 'Top', x: 95, y: 0 },
+                { key: 'top-right', label: 'TR', x: 165, y: 30 },
+                { key: 'right', label: 'Right', x: 190, y: 95 },
+                { key: 'bottom-right', label: 'BR', x: 165, y: 160 },
+                { key: 'bottom', label: 'Bottom', x: 95, y: 190 },
+                { key: 'bottom-left', label: 'BL', x: 25, y: 160 },
+                { key: 'left', label: 'Left', x: 0, y: 95 },
+                { key: 'top-left', label: 'TL', x: 25, y: 30 }
+            ];
+
+            const total = Object.values(data).reduce((sum, v) => sum + (v || 0), 0);
+            const maxValue = Math.max(...Object.values(data), 1);
+
+            let html = '<div class="heatmap-circle">';
+
+            positions.forEach(pos => {
+                const value = data[pos.key] || 0;
+                const intensity = value / maxValue;
+                let heatClass = 'cool';
+                if (intensity > 0.7) heatClass = 'hot';
+                else if (intensity > 0.4) heatClass = 'warm';
+
+                html += `
+                    <div class="heatmap-section ${heatClass}" style="left: ${pos.x}px; top: ${pos.y}px;">
+                        <span class="heatmap-section-label">${pos.label}</span>
+                        <span class="heatmap-section-value">${value}</span>
+                    </div>
+                `;
+            });
+
+            html += `
+                <div class="heatmap-center">
+                    <span class="heatmap-center-label">Total</span>
+                    <span class="heatmap-center-value">${total.toLocaleString('th-TH')}</span>
+                </div>
+            `;
+            html += '</div>';
+
+            container.innerHTML = html;
+
+        } catch (error) {
+            console.error('Error loading position heatmap:', error);
+            container.innerHTML = '<div class="analytics-empty">เกิดข้อผิดพลาด</div>';
+        }
+    }
+
+    // Load scroll depth statistics
+    async function loadScrollDepthStats() {
+        const container = document.getElementById('scrollDepthChart');
+
+        try {
+            const database = firebase.database();
+            const snapshot = await database.ref('analytics/interpretationScroll').once('value');
+            const data = snapshot.val();
+
+            if (!data) {
+                container.innerHTML = '<div class="analytics-empty">ยังไม่มีข้อมูล</div>';
+                return;
+            }
+
+            const buckets = [
+                { key: '0-25', label: '0-25%', class: 'scroll-low' },
+                { key: '25-50', label: '25-50%', class: 'scroll-med' },
+                { key: '50-75', label: '50-75%', class: 'scroll-high' },
+                { key: '75-100', label: '75-100%', class: 'scroll-complete' }
+            ];
+
+            const maxValue = Math.max(...buckets.map(b => data[b.key] || 0), 1);
+
+            let html = '<div class="chart-bar-container">';
+            buckets.forEach(bucket => {
+                const value = data[bucket.key] || 0;
+                const percentage = ((value / maxValue) * 100).toFixed(0);
+
+                html += `
+                    <div class="chart-bar-item">
+                        <div class="chart-bar-label">${bucket.label}</div>
+                        <div class="chart-bar">
+                            <div class="chart-bar-fill ${bucket.class}" style="width: ${percentage}%"></div>
+                        </div>
+                        <div class="chart-bar-value">${value.toLocaleString('th-TH')}</div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            container.innerHTML = html;
+
+        } catch (error) {
+            console.error('Error loading scroll depth stats:', error);
             container.innerHTML = '<div class="analytics-empty">เกิดข้อผิดพลาด</div>';
         }
     }

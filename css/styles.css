@@ -2936,6 +2936,44 @@ footer {
     background: linear-gradient(90deg, #6c757d 0%, #adb5bd 100%);
 }
 
+/* Time to Pick Colors */
+.chart-bar-fill.instant {
+    background: linear-gradient(90deg, #00c853 0%, #69f0ae 100%);
+}
+
+.chart-bar-fill.quick {
+    background: linear-gradient(90deg, #64dd17 0%, #b2ff59 100%);
+}
+
+.chart-bar-fill.normal {
+    background: linear-gradient(90deg, #ffc107 0%, #ffeb3b 100%);
+}
+
+.chart-bar-fill.medium {
+    background: linear-gradient(90deg, #ff9800 0%, #ffb74d 100%);
+}
+
+.chart-bar-fill.slow {
+    background: linear-gradient(90deg, #f44336 0%, #ef9a9a 100%);
+}
+
+/* Scroll Depth Colors */
+.chart-bar-fill.scroll-low {
+    background: linear-gradient(90deg, #ff5252 0%, #ff8a80 100%);
+}
+
+.chart-bar-fill.scroll-med {
+    background: linear-gradient(90deg, #ff9800 0%, #ffcc80 100%);
+}
+
+.chart-bar-fill.scroll-high {
+    background: linear-gradient(90deg, #4caf50 0%, #a5d6a7 100%);
+}
+
+.chart-bar-fill.scroll-complete {
+    background: linear-gradient(90deg, #2196f3 0%, #90caf9 100%);
+}
+
 .chart-bar-value {
     font-family: 'Prompt', sans-serif;
     font-size: 0.75rem;
@@ -3102,6 +3140,274 @@ footer {
     color: var(--gold);
     letter-spacing: 3px;
     margin-top: 10px;
+}
+
+/* User Journey Funnel */
+.funnel-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.funnel-step {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 15px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.1), transparent);
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+}
+
+.funnel-step::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: var(--bar-width, 0%);
+    background: linear-gradient(90deg, var(--gold), transparent);
+    opacity: 0.3;
+    transition: width 0.5s ease;
+}
+
+.funnel-step-label {
+    font-family: 'Prompt', sans-serif;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.9);
+    min-width: 80px;
+    z-index: 1;
+}
+
+.funnel-step-value {
+    font-family: 'Prompt', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--gold);
+    z-index: 1;
+}
+
+.funnel-step-percent {
+    margin-left: auto;
+    font-family: 'Prompt', sans-serif;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.6);
+    z-index: 1;
+}
+
+/* Device Stats Grid */
+.device-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.device-stat {
+    background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+}
+
+.device-icon {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 10px;
+    color: var(--gold);
+}
+
+.device-name {
+    font-family: 'Prompt', sans-serif;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 5px;
+}
+
+.device-value {
+    font-family: 'Prompt', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 500;
+    color: white;
+}
+
+.device-percent {
+    font-family: 'Prompt', sans-serif;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.5);
+}
+
+/* Feature Usage Grid */
+.feature-usage-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.feature-item {
+    background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 15px;
+}
+
+.feature-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.feature-name {
+    font-family: 'Prompt', sans-serif;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.9);
+}
+
+.feature-total {
+    font-family: 'Prompt', sans-serif;
+    font-size: 0.75rem;
+    color: var(--gold);
+}
+
+.feature-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.feature-action {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Prompt', sans-serif;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.6);
+}
+
+/* Position Heatmap */
+.position-heatmap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+}
+
+.heatmap-circle {
+    position: relative;
+    width: 250px;
+    height: 250px;
+}
+
+.heatmap-section {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.1);
+    border: 2px solid rgba(255,255,255,0.2);
+    transition: all 0.3s ease;
+}
+
+.heatmap-section.hot {
+    background: linear-gradient(135deg, rgba(255,75,75,0.4), rgba(255,150,75,0.3));
+    border-color: rgba(255,100,100,0.5);
+}
+
+.heatmap-section.warm {
+    background: linear-gradient(135deg, rgba(255,200,75,0.3), rgba(255,150,75,0.2));
+    border-color: rgba(255,200,100,0.4);
+}
+
+.heatmap-section.cool {
+    background: linear-gradient(135deg, rgba(75,150,255,0.2), rgba(100,200,255,0.1));
+    border-color: rgba(100,200,255,0.3);
+}
+
+.heatmap-section-label {
+    font-family: 'Prompt', sans-serif;
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.7);
+}
+
+.heatmap-section-value {
+    font-family: 'Prompt', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: white;
+}
+
+.heatmap-center {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+    border: 2px solid rgba(255,255,255,0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.heatmap-center-label {
+    font-family: 'Prompt', sans-serif;
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.5);
+}
+
+.heatmap-center-value {
+    font-family: 'Prompt', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--gold);
+}
+
+/* Responsive adjustments for new sections */
+@media (max-width: 480px) {
+    .device-stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+
+    .device-stat {
+        padding: 12px 8px;
+    }
+
+    .device-icon {
+        width: 30px;
+        height: 30px;
+    }
+
+    .device-value {
+        font-size: 1.1rem;
+    }
+
+    .feature-usage-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .heatmap-circle {
+        width: 200px;
+        height: 200px;
+    }
+
+    .heatmap-section {
+        width: 45px;
+        height: 45px;
+    }
+
+    .heatmap-center {
+        width: 60px;
+        height: 60px;
+    }
 }
 
 /* Empty State */

@@ -654,6 +654,234 @@ async function fetchCardRankings(limit = 5) {
     }
 }
 
+// ========================================
+// Advanced Analytics Tracking
+// ========================================
+
+// Session tracking
+let sessionId = null;
+let sessionStartTime = null;
+let landingPageLoadTime = null;
+
+function generateSessionId() {
+    return 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
+}
+
+// Initialize session when page loads
+function initSession() {
+    sessionId = generateSessionId();
+    sessionStartTime = Date.now();
+    landingPageLoadTime = Date.now();
+
+    // Track session start
+    trackEvent('session', 'start', {
+        userAgent: navigator.userAgent,
+        screenWidth: window.screen.width,
+        screenHeight: window.screen.height,
+        devicePixelRatio: window.devicePixelRatio,
+        language: navigator.language,
+        referrer: document.referrer || 'direct'
+    });
+
+    // Track page unload for session duration
+    window.addEventListener('beforeunload', () => {
+        const duration = Math.round((Date.now() - sessionStartTime) / 1000);
+        trackEvent('session', 'end', { durationSeconds: duration });
+    });
+}
+
+// Track generic events
+async function trackEvent(category, action, data = {}) {
+    if (!isFirebaseInitialized || !database) {
+        return null;
+    }
+
+    try {
+        const eventRef = database.ref('analytics/events').push();
+        await eventRef.set({
+            sessionId: sessionId,
+            category: category,
+            action: action,
+            data: data,
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+        return true;
+    } catch (error) {
+        console.warn('Failed to track event:', error.message);
+        return null;
+    }
+}
+
+// Track user journey steps
+async function trackJourneyStep(step, extraData = {}) {
+    if (!isFirebaseInitialized || !database) return null;
+
+    try {
+        const journeyRef = database.ref(`analytics/journey/${step}`);
+        await journeyRef.transaction((current) => (current || 0) + 1);
+
+        // Also track detailed event
+        trackEvent('journey', step, extraData);
+        return true;
+    } catch (error) {
+        console.warn('Failed to track journey step:', error.message);
+        return null;
+    }
+}
+
+// Track time to first pick (from landing page load)
+async function trackTimeToFirstPick() {
+    if (!landingPageLoadTime) return null;
+
+    const timeToPickMs = Date.now() - landingPageLoadTime;
+    const timeToPickSeconds = Math.round(timeToPickMs / 1000);
+
+    try {
+        // Store in time buckets for easy analysis
+        let bucket = 'instant'; // < 5s
+        if (timeToPickSeconds >= 60) bucket = 'slow'; // >= 60s
+        else if (timeToPickSeconds >= 30) bucket = 'medium'; // 30-59s
+        else if (timeToPickSeconds >= 10) bucket = 'normal'; // 10-29s
+        else if (timeToPickSeconds >= 5) bucket = 'quick'; // 5-9s
+
+        const bucketRef = database.ref(`analytics/timeToFirstPick/${bucket}`);
+        await bucketRef.transaction((current) => (current || 0) + 1);
+
+        // Track exact time in events
+        trackEvent('timing', 'time_to_first_pick', { seconds: timeToPickSeconds, bucket });
+
+        return timeToPickSeconds;
+    } catch (error) {
+        console.warn('Failed to track time to first pick:', error.message);
+        return null;
+    }
+}
+
+// Track feature usage
+async function trackFeatureUsage(feature, action = 'use') {
+    if (!isFirebaseInitialized || !database) return null;
+
+    try {
+        const featureRef = database.ref(`analytics/features/${feature}/${action}`);
+        await featureRef.transaction((current) => (current || 0) + 1);
+        return true;
+    } catch (error) {
+        console.warn('Failed to track feature usage:', error.message);
+        return null;
+    }
+}
+
+// Track music toggle
+function trackMusicToggle(isMuted) {
+    trackFeatureUsage('music', isMuted ? 'muted' : 'unmuted');
+}
+
+// Track comments panel
+function trackCommentsPanel(action) {
+    trackFeatureUsage('commentsPanel', action); // 'opened', 'closed', 'tabSwitch'
+}
+
+// Track ranking panel
+function trackRankingPanel(action) {
+    trackFeatureUsage('rankingPanel', action); // 'opened', 'closed'
+}
+
+// Track result interpretation scroll
+async function trackInterpretationScroll(scrollPercent) {
+    if (!isFirebaseInitialized || !database) return null;
+
+    try {
+        // Store in percentage buckets
+        let bucket = '0-25';
+        if (scrollPercent >= 75) bucket = '75-100';
+        else if (scrollPercent >= 50) bucket = '50-75';
+        else if (scrollPercent >= 25) bucket = '25-50';
+
+        const scrollRef = database.ref(`analytics/interpretationScroll/${bucket}`);
+        await scrollRef.transaction((current) => (current || 0) + 1);
+        return true;
+    } catch (error) {
+        console.warn('Failed to track scroll:', error.message);
+        return null;
+    }
+}
+
+// Track card position clicked (where in the circle)
+async function trackCardPosition(angle) {
+    if (!isFirebaseInitialized || !database) return null;
+
+    try {
+        // Divide circle into 8 sections (45 degrees each)
+        const section = Math.floor(((angle + 22.5) % 360) / 45);
+        const sectionNames = ['top', 'top-right', 'right', 'bottom-right', 'bottom', 'bottom-left', 'left', 'top-left'];
+        const sectionName = sectionNames[section] || 'unknown';
+
+        const posRef = database.ref(`analytics/cardPositions/${sectionName}`);
+        await posRef.transaction((current) => (current || 0) + 1);
+        return true;
+    } catch (error) {
+        console.warn('Failed to track card position:', error.message);
+        return null;
+    }
+}
+
+// Track device type
+async function trackDeviceType() {
+    if (!isFirebaseInitialized || !database) return null;
+
+    try {
+        const width = window.innerWidth;
+        let deviceType = 'desktop';
+        if (width <= 480) deviceType = 'mobile';
+        else if (width <= 768) deviceType = 'tablet';
+
+        const deviceRef = database.ref(`analytics/devices/${deviceType}`);
+        await deviceRef.transaction((current) => (current || 0) + 1);
+        return true;
+    } catch (error) {
+        console.warn('Failed to track device type:', error.message);
+        return null;
+    }
+}
+
+// Track comment form abandonment
+async function trackCommentFormStart() {
+    return trackFeatureUsage('commentForm', 'started');
+}
+
+async function trackCommentFormAbandon() {
+    return trackFeatureUsage('commentForm', 'abandoned');
+}
+
+async function trackCommentFormSubmit() {
+    return trackFeatureUsage('commentForm', 'submitted');
+}
+
+// Fetch analytics summary for dashboard
+async function fetchAnalyticsSummary() {
+    if (!isFirebaseInitialized || !database) {
+        return null;
+    }
+
+    try {
+        const analyticsRef = database.ref('analytics');
+        const snapshot = await analyticsRef.once('value');
+        return snapshot.val() || {};
+    } catch (error) {
+        console.warn('Failed to fetch analytics summary:', error.message);
+        return null;
+    }
+}
+
+// Initialize session on load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initSession, 100);
+    });
+} else {
+    setTimeout(initSession, 100);
+}
+
 // Export for use in app.js
 window.cardCounter = {
     increment: handleCardPickCounter,
@@ -678,5 +906,20 @@ window.cardCounter = {
     fetchTopCommentsByReplies: fetchTopCommentsByReplies,
     fetchHotComments: fetchHotComments,
     fetchCommentsByUserId: fetchCommentsByUserId,
-    fetchCardRankings: fetchCardRankings
+    fetchCardRankings: fetchCardRankings,
+    // Advanced Analytics
+    trackEvent: trackEvent,
+    trackJourneyStep: trackJourneyStep,
+    trackTimeToFirstPick: trackTimeToFirstPick,
+    trackFeatureUsage: trackFeatureUsage,
+    trackMusicToggle: trackMusicToggle,
+    trackCommentsPanel: trackCommentsPanel,
+    trackRankingPanel: trackRankingPanel,
+    trackInterpretationScroll: trackInterpretationScroll,
+    trackCardPosition: trackCardPosition,
+    trackDeviceType: trackDeviceType,
+    trackCommentFormStart: trackCommentFormStart,
+    trackCommentFormAbandon: trackCommentFormAbandon,
+    trackCommentFormSubmit: trackCommentFormSubmit,
+    fetchAnalyticsSummary: fetchAnalyticsSummary
 };

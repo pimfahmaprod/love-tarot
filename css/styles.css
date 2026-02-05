@@ -494,14 +494,11 @@ header {
     transform-origin: center center;
 }
 
-.card-container:hover {
-    z-index: 1000 !important;
-}
+/* Card stays at original z-index on hover */
 
 .card-container.disabled {
     pointer-events: none;
-    opacity: 0.3;
-    transform: scale(0.95);
+    /* Keep normal appearance, just disable clicks */
 }
 
 .card-container.selecting {

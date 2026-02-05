@@ -477,21 +477,7 @@ function renderCards() {
         // Store original transform for hover effects
         container.dataset.index = index;
 
-        container.addEventListener('mouseenter', () => {
-            if (!container.classList.contains('selecting') && !container.classList.contains('disabled')) {
-                const originalTransform = getCardTransform(index);
-                container.style.transform = `${originalTransform} scale(1.4)`;
-                container.style.zIndex = '1000';
-            }
-        });
-
-        container.addEventListener('mouseleave', () => {
-            if (!container.classList.contains('selecting') && !container.classList.contains('disabled')) {
-                const originalTransform = getCardTransform(index);
-                container.style.transform = originalTransform;
-                container.style.zIndex = index;
-            }
-        });
+        // No hover effects - card stays at original size and z-index
     });
 
     // Apply stacked layout initially (animation triggered later)
@@ -676,6 +662,14 @@ function selectCard(cardId, cardElement) {
     }
 
     selectedCardElement = cardElement;
+
+    // Reset hover scale immediately to prevent visual jump
+    const index = parseInt(cardElement.dataset.index);
+    const originalTransform = getCardTransform(index);
+    cardElement.style.transition = 'none';
+    cardElement.style.transform = originalTransform;
+    // Force reflow to apply the change immediately
+    cardElement.offsetHeight;
 
     // Set center card image
     document.getElementById('centerCardImage').src = `images/tarot/${card.image}`;
@@ -1089,12 +1083,11 @@ function drawVerticalLayout(ctx, cardImg, width, height) {
     ctx.fillStyle = '#722F37';
     ctx.fillText('คำทำนาย', width / 2, interpretY + 50);
 
-    // Interpretation text - full text with bounds
+    // Interpretation text - full text with bounds (preserve paragraph breaks)
     ctx.font = '26px "Prompt", sans-serif';
     ctx.fillStyle = '#722F37';
-    const interpretation = currentCardData.interpretation.replace(/\n\n/g, ' ').replace(/\n/g, ' ');
     const maxInterpretY = height - 180; // Leave space for footer
-    wrapText(ctx, interpretation, width / 2, interpretY + 110, width - 160, 38, maxInterpretY);
+    wrapTextWithParagraphsCenter(ctx, currentCardData.interpretation, width / 2, interpretY + 110, width - 160, 38, maxInterpretY);
 
     // Footer - 2 columns layout with divider
     const iconSize = 26;
@@ -1125,13 +1118,16 @@ function drawVerticalLayout(ctx, cardImg, width, height) {
 }
 
 function drawSquareLayout(ctx, cardImg, width, height) {
+    // Border padding for safe area - generous margin from border
+    const safePadding = 80;
+
     // Card image - left side, large and vertically centered
     let cardRightX = 450;
     if (cardImg) {
-        const cardHeight = height - 160;
+        const cardHeight = height - 200; // More vertical padding
         const cardWidth = cardHeight * (cardImg.width / cardImg.height);
-        const cardX = 80;
-        const cardY = 80;
+        const cardX = safePadding + 10;
+        const cardY = 100;
 
         // Card shadow
         ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
@@ -1141,56 +1137,55 @@ function drawSquareLayout(ctx, cardImg, width, height) {
 
         ctx.drawImage(cardImg, cardX, cardY, cardWidth, cardHeight);
         ctx.shadowColor = 'transparent';
-        cardRightX = cardX + cardWidth + 50;
+        cardRightX = cardX + cardWidth + 35;
     }
 
-    // Right side - Text area
+    // Right side - Text area with safe margins
     const textX = cardRightX;
-    const textWidth = width - textX - 70;
+    const textWidth = width - textX - safePadding - 10; // More right padding
 
     // Title small
     ctx.fillStyle = 'rgba(114, 47, 55, 0.6)';
-    ctx.font = '24px "Cormorant Garamond", serif';
+    ctx.font = '22px "Cormorant Garamond", serif';
     ctx.textAlign = 'left';
-    ctx.fillText('Valentine Tarot', textX, 130);
+    ctx.fillText('Valentine Tarot', textX, 140);
 
     // Card name - large (with dynamic sizing to fit)
     ctx.fillStyle = '#722F37';
-    let nameFontSize = 52;
+    let nameFontSize = 48;
     ctx.font = `bold ${nameFontSize}px "Cormorant Garamond", serif`;
     let nameWidth = ctx.measureText(currentCardData.name).width;
-    while (nameWidth > textWidth && nameFontSize > 28) {
+    while (nameWidth > textWidth && nameFontSize > 26) {
         nameFontSize -= 2;
         ctx.font = `bold ${nameFontSize}px "Cormorant Garamond", serif`;
         nameWidth = ctx.measureText(currentCardData.name).width;
     }
-    ctx.fillText(currentCardData.name, textX, 190);
+    ctx.fillText(currentCardData.name, textX, 195);
 
     // Decorative line
     ctx.strokeStyle = 'rgba(114, 47, 55, 0.4)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(textX, 215);
-    ctx.lineTo(textX + 200, 215);
+    ctx.moveTo(textX, 220);
+    ctx.lineTo(textX + Math.min(180, textWidth - 20), 220);
     ctx.stroke();
 
     // Quote
-    ctx.font = 'italic 24px "Cormorant Garamond", serif';
+    ctx.font = 'italic 22px "Cormorant Garamond", serif';
     ctx.fillStyle = 'rgba(114, 47, 55, 0.85)';
     const quote = `"${currentCardData.quote}"`;
-    wrapTextLeft(ctx, quote, textX, 260, textWidth, 32);
+    wrapTextLeft(ctx, quote, textX, 265, textWidth, 30);
 
-    // Interpretation - full text with bounds
-    ctx.font = '18px "Prompt", sans-serif';
+    // Interpretation - full text with bounds (preserve paragraph breaks)
+    ctx.font = '17px "Prompt", sans-serif';
     ctx.fillStyle = '#722F37';
-    const interpretation = currentCardData.interpretation.replace(/\n\n/g, ' ').replace(/\n/g, ' ');
-    const maxInterpretY = height - 140; // Leave space for footer
-    wrapTextLeft(ctx, interpretation, textX, 360, textWidth, 26, maxInterpretY);
+    const maxInterpretY = height - safePadding - 100; // Leave space for footer within safe area
+    wrapTextWithParagraphs(ctx, currentCardData.interpretation, textX, 360, textWidth, 25, maxInterpretY);
 
     // Footer - 2 columns layout with divider
     const iconSize = 18;
     const footerColor = 'rgba(114, 47, 55, 0.55)';
-    const footerY = height - 95;
+    const footerY = height - safePadding - 40;
     const gap = 50;
 
     // Left column: 4 social icons + Pimfahmaprod
@@ -1266,12 +1261,11 @@ function drawWideLayout(ctx, cardImg, width, height) {
     const quote = `"${currentCardData.quote}"`;
     wrapTextLeft(ctx, quote, textX, 180, textWidth, 26);
 
-    // Interpretation - full text with bounds
+    // Interpretation - full text with bounds (preserve paragraph breaks)
     ctx.font = '16px "Prompt", sans-serif';
     ctx.fillStyle = '#722F37';
-    const interpretation = currentCardData.interpretation.replace(/\n\n/g, ' ').replace(/\n/g, ' ');
     const maxInterpretY = height - 90; // Leave space for footer
-    wrapTextLeft(ctx, interpretation, textX, 260, textWidth, 22, maxInterpretY);
+    wrapTextWithParagraphs(ctx, currentCardData.interpretation, textX, 260, textWidth, 22, maxInterpretY);
 
     // Footer - 2 columns layout with divider
     const iconSize = 14;
@@ -1323,6 +1317,201 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxY = Infinity) {
     return y;
 }
 
+// Text wrapping with paragraph support (centered) - for Story layout
+function wrapTextWithParagraphsCenter(ctx, text, x, y, maxWidth, lineHeight, maxY = Infinity) {
+    ctx.textAlign = 'center';
+    const paragraphs = text.split('\n\n');
+    const paragraphGap = lineHeight * 0.5;
+
+    for (let p = 0; p < paragraphs.length; p++) {
+        const paragraph = paragraphs[p].replace(/\n/g, ' ').trim();
+        if (!paragraph) continue;
+
+        const words = paragraph.split(' ');
+        let line = '';
+
+        for (let i = 0; i < words.length; i++) {
+            const word = words[i];
+            const testLine = line + word + ' ';
+            const metrics = ctx.measureText(testLine);
+
+            if (metrics.width > maxWidth) {
+                if (line.length > 0) {
+                    if (y + lineHeight > maxY) {
+                        ctx.fillText(line.trim() + '...', x, y);
+                        return y;
+                    }
+                    ctx.fillText(line.trim(), x, y);
+                    y += lineHeight;
+                    line = '';
+                }
+
+                // Handle long words
+                if (ctx.measureText(word).width > maxWidth) {
+                    let charLine = '';
+                    for (let j = 0; j < word.length; j++) {
+                        const testCharLine = charLine + word[j];
+                        if (ctx.measureText(testCharLine).width > maxWidth && charLine.length > 0) {
+                            if (y + lineHeight > maxY) {
+                                ctx.fillText(charLine + '...', x, y);
+                                return y;
+                            }
+                            ctx.fillText(charLine, x, y);
+                            y += lineHeight;
+                            charLine = word[j];
+                        } else {
+                            charLine = testCharLine;
+                        }
+                    }
+                    line = charLine + ' ';
+                } else {
+                    line = word + ' ';
+                }
+            } else {
+                line = testLine;
+            }
+        }
+
+        // Draw remaining text of this paragraph
+        if (line.trim().length > 0 && y <= maxY) {
+            ctx.fillText(line.trim(), x, y);
+            y += lineHeight;
+        }
+
+        // Add paragraph gap
+        if (p < paragraphs.length - 1 && y <= maxY) {
+            y += paragraphGap;
+        }
+    }
+    return y;
+}
+
+// Text wrapping with paragraph support - adds extra space for \n\n
+function wrapTextWithParagraphs(ctx, text, x, y, maxWidth, lineHeight, maxY = Infinity) {
+    ctx.textAlign = 'left';
+    const paragraphs = text.split('\n\n');
+    const paragraphGap = lineHeight * 0.5; // Extra space between paragraphs
+
+    for (let p = 0; p < paragraphs.length; p++) {
+        const paragraph = paragraphs[p].replace(/\n/g, ' ').trim();
+        if (!paragraph) continue;
+
+        const words = paragraph.split(' ');
+        let line = '';
+
+        for (let i = 0; i < words.length; i++) {
+            const word = words[i];
+            const testLine = line + word + ' ';
+            const metrics = ctx.measureText(testLine);
+
+            if (metrics.width > maxWidth) {
+                if (line.length > 0) {
+                    // Check boundary before drawing
+                    if (y + lineHeight > maxY) {
+                        ctx.fillText(line.trim() + '...', x, y);
+                        return y;
+                    }
+                    ctx.fillText(line.trim(), x, y);
+                    y += lineHeight;
+                    line = '';
+                }
+
+                // Handle long words by breaking at character level
+                if (ctx.measureText(word).width > maxWidth) {
+                    let charLine = '';
+                    for (let j = 0; j < word.length; j++) {
+                        const testCharLine = charLine + word[j];
+                        if (ctx.measureText(testCharLine).width > maxWidth && charLine.length > 0) {
+                            if (y + lineHeight > maxY) {
+                                ctx.fillText(charLine + '...', x, y);
+                                return y;
+                            }
+                            ctx.fillText(charLine, x, y);
+                            y += lineHeight;
+                            charLine = word[j];
+                        } else {
+                            charLine = testCharLine;
+                        }
+                    }
+                    line = charLine + ' ';
+                } else {
+                    line = word + ' ';
+                }
+            } else {
+                line = testLine;
+            }
+        }
+
+        // Draw remaining text of this paragraph
+        if (line.trim().length > 0 && y <= maxY) {
+            ctx.fillText(line.trim(), x, y);
+            y += lineHeight;
+        }
+
+        // Add paragraph gap (except for last paragraph)
+        if (p < paragraphs.length - 1 && y <= maxY) {
+            y += paragraphGap;
+        }
+    }
+    return y;
+}
+
+// Thai-aware text wrapping - handles long Thai words by breaking at character level
+function wrapTextThaiAware(ctx, text, x, y, maxWidth, lineHeight, maxY = Infinity) {
+    ctx.textAlign = 'left';
+    const words = text.split(' ');
+    let line = '';
+
+    for (let i = 0; i < words.length; i++) {
+        const word = words[i];
+        const testLine = line + word + ' ';
+        const metrics = ctx.measureText(testLine);
+
+        if (metrics.width > maxWidth) {
+            if (line.length > 0) {
+                // Check if next line would exceed boundary
+                if (y + lineHeight > maxY) {
+                    ctx.fillText(line.trim() + '...', x, y);
+                    return y;
+                }
+                ctx.fillText(line.trim(), x, y);
+                y += lineHeight;
+                line = '';
+            }
+
+            // If single word is too long, break it character by character
+            if (ctx.measureText(word).width > maxWidth) {
+                let charLine = '';
+                for (let j = 0; j < word.length; j++) {
+                    const testCharLine = charLine + word[j];
+                    if (ctx.measureText(testCharLine).width > maxWidth && charLine.length > 0) {
+                        if (y + lineHeight > maxY) {
+                            ctx.fillText(charLine + '...', x, y);
+                            return y;
+                        }
+                        ctx.fillText(charLine, x, y);
+                        y += lineHeight;
+                        charLine = word[j];
+                    } else {
+                        charLine = testCharLine;
+                    }
+                }
+                line = charLine + ' ';
+            } else {
+                line = word + ' ';
+            }
+        } else {
+            line = testLine;
+        }
+    }
+
+    // Draw remaining text only if within bounds
+    if (line.trim().length > 0 && y <= maxY) {
+        ctx.fillText(line.trim(), x, y);
+    }
+    return y;
+}
+
 function wrapTextLeft(ctx, text, x, y, maxWidth, lineHeight, maxY = Infinity) {
     ctx.textAlign = 'left';
     const words = text.split(' ');
@@ -1333,8 +1522,9 @@ function wrapTextLeft(ctx, text, x, y, maxWidth, lineHeight, maxY = Infinity) {
         testLine = line + words[i] + ' ';
         const metrics = ctx.measureText(testLine);
         if (metrics.width > maxWidth && i > 0) {
-            if (y > maxY) {
-                ctx.fillText(line.trim() + '...', x, y - lineHeight);
+            // Check if next line would exceed boundary
+            if (y + lineHeight > maxY) {
+                ctx.fillText(line.trim() + '...', x, y);
                 return y;
             }
             ctx.fillText(line.trim(), x, y);
@@ -1344,7 +1534,8 @@ function wrapTextLeft(ctx, text, x, y, maxWidth, lineHeight, maxY = Infinity) {
             line = testLine;
         }
     }
-    if (y <= maxY + lineHeight) {
+    // Draw remaining text only if within bounds
+    if (y <= maxY) {
         ctx.fillText(line.trim(), x, y);
     }
     return y;

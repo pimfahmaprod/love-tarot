@@ -1202,7 +1202,7 @@ async function checkCardComments(cardId) {
     }
 }
 
-// View comments for the current card
+// View comments for the current card (creates gold-bordered navigated card)
 async function viewCardComments() {
     if (!currentCardData) return;
 
@@ -1211,7 +1211,7 @@ async function viewCardComments() {
     // Open comments panel first
     openCommentsPanel();
 
-    // Wait for comments to load, then find and expand the card's comment
+    // Wait for comments to load, then create navigated card
     setTimeout(async () => {
         if (!window.cardCounter || !window.cardCounter.fetchCommentsByCardId) return;
 
@@ -1222,30 +1222,15 @@ async function viewCardComments() {
             if (comments && comments.length > 0) {
                 const latestComment = comments[0];
 
-                // Find the comment card in the panel
-                const commentsList = document.getElementById('commentsList');
-                if (!commentsList) return;
-
-                // Look for the card with matching comment ID
-                const commentCard = commentsList.querySelector(`[data-comment-id="${latestComment.id}"]`);
-
-                if (commentCard) {
-                    // Expand this card
-                    const card = commentCard;
-                    if (expandedCommentCard && expandedCommentCard !== card) {
-                        collapseCommentCard(expandedCommentCard);
-                    }
-                    await expandCommentCard(card, latestComment);
-                    expandedCommentCard = card;
-
-                    // Scroll to the card
-                    setTimeout(() => {
-                        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }, 100);
-                }
+                // Use navigateToRelatedComment to create gold-bordered card
+                await navigateToRelatedComment(latestComment);
+            } else {
+                // No comments found for this card
+                showToast('ยังไม่มีความคิดเห็นบนไพ่ใบนี้');
             }
         } catch (error) {
             console.warn('Failed to view card comments:', error);
+            showToast('ไม่สามารถโหลดความคิดเห็นได้');
         }
     }, 500);
 }

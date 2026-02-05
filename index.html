@@ -110,12 +110,21 @@
 
         <!-- Comment Section -->
         <div class="comment-section">
-            <button class="comment-toggle-btn" id="commentToggleBtn" onclick="toggleCommentForm()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                </svg>
-                <span>แสดงความคิดเห็น</span>
-            </button>
+            <div class="comment-buttons-row">
+                <button class="comment-toggle-btn" id="commentToggleBtn" onclick="toggleCommentForm()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <span id="commentToggleBtnText">คุณอยากบอกแม่หมอว่า ...</span>
+                </button>
+                <button class="view-comments-btn" id="viewCommentsBtn" onclick="viewCardComments()" style="display: none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <span>ดูความคิดเห็น</span>
+                </button>
+            </div>
             <div class="comment-form" id="commentForm">
                 <div class="comment-input-group" id="commentNameGroup">
                     <label for="commentName">ชื่อของคุณ</label>
@@ -203,10 +212,19 @@
     <div class="comments-panel" id="commentsPanel">
         <div class="comments-panel-header">
             <div class="comments-panel-title">
-                <h3>เรื่องราวจากดวงดาว ✦</h3>
+                <h3>เรื่องเล่าจากดวงดาว ✦</h3>
                 <span class="comments-panel-user" id="commentsPanelUser">Anonymous</span>
             </div>
-            <button class="comments-panel-close" id="commentsPanelClose">&times;</button>
+            <button class="comments-panel-close" id="commentsPanelClose">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="6 9 12 15 18 9"/>
+                </svg>
+            </button>
+        </div>
+        <div class="comments-tabs" id="commentsTabs">
+            <button class="comments-tab active" data-tab="new">ล่าสุด</button>
+            <button class="comments-tab" data-tab="hot">ยอดนิยม</button>
+            <button class="comments-tab" data-tab="me">ของฉัน</button>
         </div>
         <div class="comments-list" id="commentsList">
             <div class="comments-loading" id="commentsLoading">

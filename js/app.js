@@ -963,6 +963,9 @@ function selectCard(cardId, cardElement) {
                 if (window.cardCounter && window.cardCounter.increment) {
                     window.cardCounter.increment(card.id, card.name, getUserId());
                 }
+
+                // Check if this card has comments and update button visibility
+                checkCardComments(card.id);
             }, 800);
         }, 500);
     }, 600);
@@ -978,21 +981,26 @@ function closeResult() {
 
     const cardGrid = document.getElementById('cardGrid');
 
-    // Reset comment form and button
+    // Reset comment form and buttons
     const commentForm = document.getElementById('commentForm');
     const commentToggleBtn = document.getElementById('commentToggleBtn');
+    const viewCommentsBtn = document.getElementById('viewCommentsBtn');
     if (commentForm) commentForm.classList.remove('show');
     if (commentToggleBtn) {
         commentToggleBtn.classList.remove('active');
         commentToggleBtn.classList.remove('commented');
         commentToggleBtn.disabled = false;
         const btnText = commentToggleBtn.querySelector('span');
-        if (btnText) btnText.textContent = 'แสดงความคิดเห็น';
+        if (btnText) btnText.textContent = 'คุณอยากบอกแม่หมอว่า ...';
         // Restore original text bubble icon
         const svgIcon = commentToggleBtn.querySelector('svg');
         if (svgIcon) {
             svgIcon.innerHTML = '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>';
         }
+    }
+    // Reset view comments button
+    if (viewCommentsBtn) {
+        viewCommentsBtn.style.display = 'none';
     }
     if (typeof resetCommentForm === 'function') resetCommentForm();
 
@@ -1161,6 +1169,88 @@ function toggleCommentForm() {
     }
 }
 
+// Check if current card has comments and update button visibility
+async function checkCardComments(cardId) {
+    const viewCommentsBtn = document.getElementById('viewCommentsBtn');
+    const commentToggleBtn = document.getElementById('commentToggleBtn');
+    const commentToggleBtnText = document.getElementById('commentToggleBtnText');
+
+    if (!viewCommentsBtn || !commentToggleBtn || !commentToggleBtnText) return;
+
+    // Default state: hide view button, show normal text
+    viewCommentsBtn.style.display = 'none';
+    commentToggleBtnText.textContent = 'คุณอยากบอกแม่หมอว่า ...';
+
+    // Check if Firebase is available
+    if (!window.cardCounter || !window.cardCounter.fetchCommentsByCardId) {
+        return;
+    }
+
+    try {
+        const comments = await window.cardCounter.fetchCommentsByCardId(cardId, null, 1);
+
+        if (comments && comments.length > 0) {
+            // Card has comments: show both buttons
+            viewCommentsBtn.style.display = 'inline-flex';
+            commentToggleBtnText.textContent = 'คุณอยากบอกแม่หมอว่า ...';
+        } else {
+            // Card has no comments: hide view button, change text
+            viewCommentsBtn.style.display = 'none';
+            commentToggleBtnText.textContent = 'เป็นคนแรกที่บอกแม่หมอ';
+        }
+    } catch (error) {
+        console.warn('Failed to check card comments:', error);
+    }
+}
+
+// View comments for the current card
+async function viewCardComments() {
+    if (!currentCardData) return;
+
+    const cardId = currentCardData.id;
+
+    // Open comments panel first
+    openCommentsPanel();
+
+    // Wait for comments to load, then find and expand the card's comment
+    setTimeout(async () => {
+        if (!window.cardCounter || !window.cardCounter.fetchCommentsByCardId) return;
+
+        try {
+            // Find the most recent comment for this card
+            const comments = await window.cardCounter.fetchCommentsByCardId(cardId, null, 1);
+
+            if (comments && comments.length > 0) {
+                const latestComment = comments[0];
+
+                // Find the comment card in the panel
+                const commentsList = document.getElementById('commentsList');
+                if (!commentsList) return;
+
+                // Look for the card with matching comment ID
+                const commentCard = commentsList.querySelector(`[data-comment-id="${latestComment.id}"]`);
+
+                if (commentCard) {
+                    // Expand this card
+                    const card = commentCard;
+                    if (expandedCommentCard && expandedCommentCard !== card) {
+                        collapseCommentCard(expandedCommentCard);
+                    }
+                    await expandCommentCard(card, latestComment);
+                    expandedCommentCard = card;
+
+                    // Scroll to the card
+                    setTimeout(() => {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to view card comments:', error);
+        }
+    }, 500);
+}
+
 function resetCommentForm() {
     const savedName = getSavedUserName();
     const nameInput = document.getElementById('commentName');
@@ -1261,7 +1351,7 @@ async function submitComment() {
                 toggleBtn.classList.remove('active');
                 toggleBtn.classList.add('commented');
                 toggleBtn.disabled = true;
-                toggleBtn.querySelector('span').textContent = 'แสดงความคิดเห็นแล้ว';
+                toggleBtn.querySelector('span').textContent = 'บอกแม่หมอแล้ว';
                 // Change icon to checkmark
                 const svgIcon = toggleBtn.querySelector('svg');
                 if (svgIcon) {
@@ -1291,6 +1381,7 @@ async function submitComment() {
 let commentsLastKey = null;
 let commentsHasMore = true;
 let isLoadingComments = false;
+let currentCommentsTab = 'new'; // 'new', 'hot', 'me'
 
 function initCommentsPanel() {
     const commentsBtn = document.getElementById('commentsBtn');
@@ -1298,6 +1389,7 @@ function initCommentsPanel() {
     const commentsOverlay = document.getElementById('commentsOverlay');
     const commentsPanelClose = document.getElementById('commentsPanelClose');
     const commentsList = document.getElementById('commentsList');
+    const commentsTabs = document.getElementById('commentsTabs');
 
     if (commentsBtn) {
         commentsBtn.addEventListener('click', openCommentsPanel);
@@ -1311,10 +1403,29 @@ function initCommentsPanel() {
         commentsOverlay.addEventListener('click', closeCommentsPanel);
     }
 
-    // Lazy loading on scroll DOWN (load older comments)
+    // Tab click handlers
+    if (commentsTabs) {
+        commentsTabs.addEventListener('click', (e) => {
+            const tab = e.target.closest('.comments-tab');
+            if (!tab) return;
+
+            const tabName = tab.dataset.tab;
+            if (tabName === currentCommentsTab) return;
+
+            // Update active tab
+            commentsTabs.querySelectorAll('.comments-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            // Switch tab content
+            currentCommentsTab = tabName;
+            switchCommentsTab(tabName);
+        });
+    }
+
+    // Lazy loading on scroll DOWN (load older comments) - only for 'new' tab
     if (commentsList) {
         commentsList.addEventListener('scroll', () => {
-            if (isLoadingComments || !commentsHasMore) return;
+            if (isLoadingComments || !commentsHasMore || currentCommentsTab !== 'new') return;
 
             // Load more when scrolling near bottom
             const { scrollTop, scrollHeight, clientHeight } = commentsList;
@@ -1330,6 +1441,29 @@ function initCommentsPanel() {
             window.cardCounter.subscribeToCommentsCount(updateCommentsCountBadge);
         }
     }, 1000);
+}
+
+function switchCommentsTab(tabName) {
+    // Reset state
+    commentsLastKey = null;
+    commentsHasMore = true;
+    displayedCommentIds.clear();
+    expandedCommentCard = null;
+
+    // Unsubscribe from real-time updates
+    if (window.cardCounter && window.cardCounter.unsubscribeFromNewComments) {
+        window.cardCounter.unsubscribeFromNewComments();
+    }
+
+    // Load content for the selected tab
+    if (tabName === 'new') {
+        newestCommentTimestamp = 0;
+        loadComments(true);
+    } else if (tabName === 'hot') {
+        loadHotComments();
+    } else if (tabName === 'me') {
+        loadMyComments();
+    }
 }
 
 function updateCommentsCountBadge(count) {
@@ -1356,6 +1490,7 @@ let expandedCommentCard = null;
 function openCommentsPanel() {
     const commentsPanel = document.getElementById('commentsPanel');
     const commentsOverlay = document.getElementById('commentsOverlay');
+    const commentsTabs = document.getElementById('commentsTabs');
 
     commentsPanel.classList.add('show');
     commentsOverlay.classList.add('show');
@@ -1363,6 +1498,14 @@ function openCommentsPanel() {
 
     // Update user name display
     updateCommentsPanelUser();
+
+    // Reset tab to "new"
+    currentCommentsTab = 'new';
+    if (commentsTabs) {
+        commentsTabs.querySelectorAll('.comments-tab').forEach(t => t.classList.remove('active'));
+        const newTab = commentsTabs.querySelector('[data-tab="new"]');
+        if (newTab) newTab.classList.add('active');
+    }
 
     // Reset and load comments (subscription happens after load completes)
     commentsLastKey = null;
@@ -1472,11 +1615,37 @@ async function loadComments(reset = false) {
         return;
     }
 
+    // On first load, fetch top comments by replies first
+    if (reset && window.cardCounter.fetchTopCommentsByReplies) {
+        const topComments = await window.cardCounter.fetchTopCommentsByReplies(3);
+
+        if (topComments.length > 0) {
+            // Create top comments section header
+            const topSection = document.createElement('div');
+            topSection.className = 'comments-top-section';
+            topSection.innerHTML = '<div class="comments-section-title">✦ ยอดนิยม</div>';
+            commentsList.appendChild(topSection);
+
+            // Add top comments
+            topComments.forEach(comment => {
+                const card = createCommentCard(comment, true); // true = show reply count
+                commentsList.appendChild(card);
+                displayedCommentIds.add(comment.id);
+            });
+
+            // Add separator for recent comments
+            const recentHeader = document.createElement('div');
+            recentHeader.className = 'comments-section-title recent';
+            recentHeader.innerHTML = '✦ ล่าสุด';
+            commentsList.appendChild(recentHeader);
+        }
+    }
+
     const result = await window.cardCounter.fetchComments(commentsLastKey, 10);
 
     loadingEl.style.display = 'none';
 
-    if (result.comments.length === 0 && reset) {
+    if (result.comments.length === 0 && reset && displayedCommentIds.size === 0) {
         // Set timestamp to current time so older existing comments won't be prepended
         newestCommentTimestamp = Date.now();
 
@@ -1502,7 +1671,7 @@ async function loadComments(reset = false) {
 
     // Show newest at top, oldest at bottom (default order from fetchComments)
     result.comments.forEach(comment => {
-        // Skip if already displayed (from real-time update)
+        // Skip if already displayed (from top section or real-time update)
         if (displayedCommentIds.has(comment.id)) return;
 
         const card = createCommentCard(comment);
@@ -1527,9 +1696,102 @@ function loadMoreComments() {
     }
 }
 
-function createCommentCard(comment) {
+// Load comments for Hot tab (sorted by most replies)
+async function loadHotComments() {
+    if (isLoadingComments) return;
+    isLoadingComments = true;
+
+    const commentsList = document.getElementById('commentsList');
+    const loadingEl = document.getElementById('commentsLoading');
+
+    commentsList.innerHTML = '';
+    commentsList.appendChild(loadingEl);
+    loadingEl.style.display = 'block';
+
+    if (!window.cardCounter || !window.cardCounter.fetchHotComments) {
+        loadingEl.innerHTML = '<span>ไม่สามารถโหลดความคิดเห็นได้</span>';
+        isLoadingComments = false;
+        return;
+    }
+
+    const comments = await window.cardCounter.fetchHotComments(30);
+
+    loadingEl.style.display = 'none';
+
+    if (comments.length === 0) {
+        commentsList.innerHTML = `
+            <div class="comments-empty">
+                <div class="comments-empty-icon">🔥</div>
+                <div class="comments-empty-text">ยังไม่มีความคิดเห็นยอดนิยม<br>ลองตอบกลับความคิดเห็นสิ!</div>
+            </div>
+        `;
+        isLoadingComments = false;
+        return;
+    }
+
+    // Display all hot comments with reply count badge
+    comments.forEach(comment => {
+        const card = createCommentCard(comment, true);
+        commentsList.appendChild(card);
+        displayedCommentIds.add(comment.id);
+    });
+
+    isLoadingComments = false;
+}
+
+// Load comments for Me tab (user's own comments)
+async function loadMyComments() {
+    if (isLoadingComments) return;
+    isLoadingComments = true;
+
+    const commentsList = document.getElementById('commentsList');
+    const loadingEl = document.getElementById('commentsLoading');
+
+    commentsList.innerHTML = '';
+    commentsList.appendChild(loadingEl);
+    loadingEl.style.display = 'block';
+
+    const userId = getUserId();
+
+    if (!window.cardCounter || !window.cardCounter.fetchCommentsByUserId) {
+        loadingEl.innerHTML = '<span>ไม่สามารถโหลดความคิดเห็นได้</span>';
+        isLoadingComments = false;
+        return;
+    }
+
+    const comments = await window.cardCounter.fetchCommentsByUserId(userId, 50);
+
+    loadingEl.style.display = 'none';
+
+    if (comments.length === 0) {
+        commentsList.innerHTML = `
+            <div class="comments-empty">
+                <div class="comments-empty-icon">✨</div>
+                <div class="comments-empty-text">คุณยังไม่เคยแสดงความคิดเห็น<br>ลองจับไพ่และบอกแม่หมอสิ!</div>
+            </div>
+        `;
+        isLoadingComments = false;
+        return;
+    }
+
+    // Display user's comments
+    comments.forEach(comment => {
+        const card = createCommentCard(comment);
+        commentsList.appendChild(card);
+        displayedCommentIds.add(comment.id);
+    });
+
+    isLoadingComments = false;
+}
+
+function createCommentCard(comment, showReplyBadge = false) {
     const card = document.createElement('div');
     card.className = 'comment-card';
+
+    // Add top-comment class if it has reply count
+    if (showReplyBadge && comment.replyCount > 0) {
+        card.classList.add('top-comment');
+    }
 
     const date = comment.timestamp ? new Date(comment.timestamp) : new Date();
     const dateStr = formatCommentDate(date);
@@ -1549,19 +1811,27 @@ function createCommentCard(comment) {
         ? `<div class="comment-card-image"><img src="images/tarot/${escapeHtml(cardImagePath)}" alt="${escapeHtml(comment.cardName || 'Tarot')}" onerror="this.parentElement.style.display='none'"></div>`
         : '';
 
+    // Reply count badge for top comments
+    const replyBadgeHtml = (showReplyBadge && comment.replyCount > 0)
+        ? `<div class="comment-reply-badge">💬 ${comment.replyCount} ตอบกลับ</div>`
+        : '';
+
     card.innerHTML = `
         ${imageHtml}
         <div class="comment-card-content">
             <div class="comment-card-header">
                 <span class="comment-card-name">${escapeHtml(comment.userName || 'Anonymous')}</span>
-                <span class="comment-card-tarot">${escapeHtml(comment.cardName || 'ไพ่ทาโรต์')}</span>
+                ${replyBadgeHtml}
             </div>
             <div class="comment-card-text">${escapeHtml(comment.comment || '')}</div>
             <div class="comment-card-date">${dateStr}</div>
 
             <!-- Expanded content: Interpretation first -->
             <div class="comment-card-full">
-                <div class="comment-card-full-title">คำทำนาย</div>
+                <div class="comment-card-full-title">
+                    <span class="comment-card-tarot">${escapeHtml(comment.cardName || 'ไพ่ทาโรต์')}</span>
+                    <span class="comment-card-full-label">คำทำนาย</span>
+                </div>
                 <div class="comment-card-full-interpretation"></div>
             </div>
 
@@ -1620,7 +1890,7 @@ function createCommentCard(comment) {
     // Load reply count
     loadReplyCount(card, comment.id);
 
-    // Add click handler for expand/collapse
+    // Add click handler for expand (no collapse on same card)
     card.addEventListener('click', (e) => {
         // Don't expand if clicking on interactive elements
         if (e.target.closest('.reply-btn') ||
@@ -1628,6 +1898,10 @@ function createCommentCard(comment) {
             e.target.closest('.replies-list') ||
             e.target.closest('.comment-card-replies-section') ||
             e.target.closest('.comment-card-related')) {
+            return;
+        }
+        // Don't do anything if already expanded
+        if (card.classList.contains('expanded')) {
             return;
         }
         e.stopPropagation();

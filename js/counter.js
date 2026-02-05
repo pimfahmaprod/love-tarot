@@ -497,6 +497,126 @@ async function getReplyCount(commentId) {
     }
 }
 
+// Fetch top comments sorted by reply count
+async function fetchTopCommentsByReplies(limit = 3) {
+    if (!isFirebaseInitialized || !database) {
+        return [];
+    }
+
+    try {
+        // Get recent comments (last 50 to find top ones)
+        const commentsRef = database.ref('comments');
+        const snapshot = await commentsRef.orderByKey().limitToLast(50).once('value');
+        const data = snapshot.val();
+
+        if (!data) {
+            return [];
+        }
+
+        // Convert to array with IDs
+        const comments = Object.entries(data).map(([key, value]) => ({
+            id: key,
+            ...value
+        }));
+
+        // Get reply counts for all comments in parallel
+        const commentsWithReplies = await Promise.all(
+            comments.map(async (comment) => {
+                const replyCount = await getReplyCount(comment.id);
+                return { ...comment, replyCount };
+            })
+        );
+
+        // Filter to only those with at least 1 reply, sort by reply count (descending)
+        const topComments = commentsWithReplies
+            .filter(c => c.replyCount > 0)
+            .sort((a, b) => b.replyCount - a.replyCount)
+            .slice(0, limit);
+
+        return topComments;
+    } catch (error) {
+        console.warn('Failed to fetch top comments:', error.message);
+        return [];
+    }
+}
+
+// Fetch all comments sorted by reply count (for Hot tab)
+async function fetchHotComments(limit = 20) {
+    if (!isFirebaseInitialized || !database) {
+        return [];
+    }
+
+    try {
+        // Get all comments
+        const commentsRef = database.ref('comments');
+        const snapshot = await commentsRef.once('value');
+        const data = snapshot.val();
+
+        if (!data) {
+            return [];
+        }
+
+        // Convert to array with IDs
+        const comments = Object.entries(data).map(([key, value]) => ({
+            id: key,
+            ...value
+        }));
+
+        // Get reply counts for all comments in parallel
+        const commentsWithReplies = await Promise.all(
+            comments.map(async (comment) => {
+                const replyCount = await getReplyCount(comment.id);
+                return { ...comment, replyCount };
+            })
+        );
+
+        // Sort by reply count (descending), then by timestamp (newest first)
+        const sortedComments = commentsWithReplies
+            .sort((a, b) => {
+                if (b.replyCount !== a.replyCount) {
+                    return b.replyCount - a.replyCount;
+                }
+                return (b.timestamp || 0) - (a.timestamp || 0);
+            })
+            .slice(0, limit);
+
+        return sortedComments;
+    } catch (error) {
+        console.warn('Failed to fetch hot comments:', error.message);
+        return [];
+    }
+}
+
+// Fetch comments by user ID (for Me tab)
+async function fetchCommentsByUserId(userId, limit = 50) {
+    if (!isFirebaseInitialized || !database || !userId) {
+        return [];
+    }
+
+    try {
+        const commentsRef = database.ref('comments');
+        const query = commentsRef.orderByChild('userId').equalTo(userId);
+
+        const snapshot = await query.once('value');
+        const data = snapshot.val();
+
+        if (!data) {
+            return [];
+        }
+
+        // Convert to array and sort by timestamp (newest first)
+        const comments = Object.entries(data)
+            .map(([key, value]) => ({ id: key, ...value }))
+            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+            .slice(0, limit);
+
+        return comments;
+    } catch (error) {
+        console.warn('Failed to fetch user comments:', error.message);
+        return [];
+    }
+}
+
 // Export for use in app.js
 window.cardCounter = {
     increment: handleCardPickCounter,
@@ -516,5 +636,8 @@ window.cardCounter = {
     unsubscribeFromNewComments: unsubscribeFromNewComments,
     submitReply: submitReply,
     fetchReplies: fetchReplies,
-    getReplyCount: getReplyCount
+    getReplyCount: getReplyCount,
+    fetchTopCommentsByReplies: fetchTopCommentsByReplies,
+    fetchHotComments: fetchHotComments,
+    fetchCommentsByUserId: fetchCommentsByUserId
 };

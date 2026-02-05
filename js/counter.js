@@ -263,6 +263,11 @@ function trackRetry() {
     return trackButtonClick('actions', 'retry');
 }
 
+// Track social link clicks
+function trackSocialClick(platform) {
+    return trackButtonClick('social', platform);
+}
+
 // Submit comment to Firebase
 async function submitCommentToFirebase(cardId, cardName, cardImage, userId, userName, commentText) {
     if (!isFirebaseInitialized || !database) {
@@ -659,6 +664,7 @@ window.cardCounter = {
     trackSaveImage: trackSaveImage,
     trackShare: trackShare,
     trackRetry: trackRetry,
+    trackSocialClick: trackSocialClick,
     submitComment: submitCommentToFirebase,
     fetchComments: fetchComments,
     fetchCommentsByCardId: fetchCommentsByCardId,

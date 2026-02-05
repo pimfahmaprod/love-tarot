@@ -3098,3 +3098,409 @@ waitForResources();
         }
     }
 })();
+
+// ========================================
+// Analytics Page - Secret Access
+// ========================================
+(function() {
+    let brandClickCount = 0;
+    let lastClickTime = 0;
+    const REQUIRED_CLICKS = 10;
+    const CLICK_TIMEOUT = 3000; // Reset if no click within 3 seconds
+
+    // Initialize analytics secret access
+    function initAnalyticsAccess() {
+        const landingBrand = document.querySelector('.landing-brand');
+        if (!landingBrand) return;
+
+        landingBrand.style.cursor = 'pointer';
+        landingBrand.addEventListener('click', handleBrandClick);
+    }
+
+    function handleBrandClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const now = Date.now();
+
+        // Reset count if too much time passed
+        if (now - lastClickTime > CLICK_TIMEOUT) {
+            brandClickCount = 0;
+        }
+
+        lastClickTime = now;
+        brandClickCount++;
+
+        // Subtle feedback
+        if (brandClickCount >= 5 && brandClickCount < REQUIRED_CLICKS) {
+            e.target.style.transform = `scale(${1 + (brandClickCount * 0.02)})`;
+            setTimeout(() => {
+                e.target.style.transform = '';
+            }, 100);
+        }
+
+        // Open analytics when reached
+        if (brandClickCount >= REQUIRED_CLICKS) {
+            brandClickCount = 0;
+            openAnalytics();
+        }
+    }
+
+    // Open analytics page
+    window.openAnalytics = async function() {
+        const analyticsPage = document.getElementById('analyticsPage');
+        if (!analyticsPage) return;
+
+        // Pause background music
+        if (audioElement && !audioElement.paused) {
+            audioElement.pause();
+        }
+
+        analyticsPage.classList.add('show');
+        document.body.style.overflow = 'hidden';
+
+        // Load analytics data
+        await loadAnalyticsData();
+    };
+
+    // Close analytics page
+    window.closeAnalytics = function() {
+        const analyticsPage = document.getElementById('analyticsPage');
+        if (!analyticsPage) return;
+
+        analyticsPage.classList.remove('show');
+        document.body.style.overflow = '';
+
+        // Resume music if was playing
+        if (audioElement && !isMuted && musicStarted) {
+            audioElement.play().catch(() => {});
+        }
+    };
+
+    // Load all analytics data
+    async function loadAnalyticsData() {
+        if (!window.cardCounter || !window.cardCounter.isEnabled()) {
+            showAnalyticsError('Firebase ยังไม่ได้เชื่อมต่อ');
+            return;
+        }
+
+        // Load all data in parallel
+        await Promise.all([
+            loadOverviewStats(),
+            loadTopCards(),
+            loadSaveFormatStats(),
+            loadShareStats(),
+            loadSocialStats(),
+            loadHotComments()
+        ]);
+    }
+
+    // Load overview statistics
+    async function loadOverviewStats() {
+        try {
+            const database = firebase.database();
+
+            // Total card picks
+            const totalPicks = await window.cardCounter.getTotal();
+            document.getElementById('statTotalPicks').textContent =
+                totalPicks ? totalPicks.toLocaleString('th-TH') : '0';
+
+            // Total comments
+            const commentsCount = await window.cardCounter.getCommentsCount();
+            document.getElementById('statTotalComments').textContent =
+                commentsCount ? commentsCount.toLocaleString('th-TH') : '0';
+
+            // Total replies
+            const repliesSnapshot = await database.ref('replies').once('value');
+            let totalReplies = 0;
+            if (repliesSnapshot.exists()) {
+                repliesSnapshot.forEach(commentReplies => {
+                    totalReplies += commentReplies.numChildren();
+                });
+            }
+            document.getElementById('statTotalReplies').textContent =
+                totalReplies.toLocaleString('th-TH');
+
+            // Total saves
+            const savesSnapshot = await database.ref('buttonClicks/save').once('value');
+            let totalSaves = 0;
+            if (savesSnapshot.exists()) {
+                savesSnapshot.forEach(format => {
+                    totalSaves += format.val() || 0;
+                });
+            }
+            document.getElementById('statTotalSaves').textContent =
+                totalSaves.toLocaleString('th-TH');
+
+        } catch (error) {
+            console.error('Error loading overview stats:', error);
+        }
+    }
+
+    // Load top 10 cards
+    async function loadTopCards() {
+        const container = document.getElementById('topCardsList');
+
+        try {
+            const database = firebase.database();
+            const snapshot = await database.ref('cardPicks').once('value');
+            const data = snapshot.val();
+
+            if (!data) {
+                container.innerHTML = '<div class="analytics-empty">ยังไม่มีข้อมูล</div>';
+                return;
+            }
+
+            // Convert to array and sort
+            const cardPicks = Object.entries(data)
+                .map(([key, count]) => ({
+                    cardId: key.replace('card_', ''),
+                    count: count || 0
+                }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 10);
+
+            const maxCount = cardPicks[0]?.count || 1;
+
+            let html = '';
+            cardPicks.forEach((card, index) => {
+                const cardData = (tarotData && tarotData.cards) ?
+                    tarotData.cards.find(c => c.id == card.cardId) : null;
+                const cardName = cardData ? cardData.name : `Card ${card.cardId}`;
+                const cardImage = cardData ? `images/tarot/${cardData.image}` : '';
+                const percentage = ((card.count / maxCount) * 100).toFixed(0);
+
+                let rankClass = 'normal';
+                if (index === 0) rankClass = 'gold';
+                else if (index === 1) rankClass = 'silver';
+                else if (index === 2) rankClass = 'bronze';
+
+                html += `
+                    <div class="top-card-item">
+                        <div class="top-card-rank ${rankClass}">${index + 1}</div>
+                        ${cardImage ? `<img src="${cardImage}" alt="${cardName}" class="top-card-image">` : ''}
+                        <div class="top-card-info">
+                            <div class="top-card-name">${escapeHtml(cardName)}</div>
+                            <div class="top-card-count">${card.count.toLocaleString('th-TH')} picks</div>
+                        </div>
+                        <div class="top-card-bar">
+                            <div class="top-card-bar-fill" style="width: ${percentage}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+
+        } catch (error) {
+            console.error('Error loading top cards:', error);
+            container.innerHTML = '<div class="analytics-empty">เกิดข้อผิดพลาด</div>';
+        }
+    }
+
+    // Load save format statistics
+    async function loadSaveFormatStats() {
+        const container = document.getElementById('saveFormatChart');
+
+        try {
+            const database = firebase.database();
+            const snapshot = await database.ref('buttonClicks/save').once('value');
+            const data = snapshot.val();
+
+            if (!data) {
+                container.innerHTML = '<div class="analytics-empty">ยังไม่มีข้อมูล</div>';
+                return;
+            }
+
+            const formats = [
+                { key: 'ig-story', label: 'IG Story', class: 'ig-story' },
+                { key: 'square', label: 'IG Post', class: 'square' },
+                { key: 'facebook', label: 'Facebook', class: 'facebook' },
+                { key: 'wide', label: 'Wide', class: 'wide' }
+            ];
+
+            const maxValue = Math.max(...formats.map(f => data[f.key] || 0), 1);
+
+            let html = '<div class="chart-bar-container">';
+            formats.forEach(format => {
+                const value = data[format.key] || 0;
+                const percentage = ((value / maxValue) * 100).toFixed(0);
+
+                html += `
+                    <div class="chart-bar-item">
+                        <span class="chart-bar-label">${format.label}</span>
+                        <div class="chart-bar-track">
+                            <div class="chart-bar-fill ${format.class}" style="width: ${percentage}%">
+                                <span class="chart-bar-value">${value.toLocaleString('th-TH')}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            container.innerHTML = html;
+
+        } catch (error) {
+            console.error('Error loading save format stats:', error);
+            container.innerHTML = '<div class="analytics-empty">เกิดข้อผิดพลาด</div>';
+        }
+    }
+
+    // Load share platform statistics
+    async function loadShareStats() {
+        const container = document.getElementById('sharePlatformChart');
+
+        try {
+            const database = firebase.database();
+            const snapshot = await database.ref('buttonClicks/share').once('value');
+            const data = snapshot.val();
+
+            if (!data) {
+                container.innerHTML = '<div class="analytics-empty">ยังไม่มีข้อมูล</div>';
+                return;
+            }
+
+            const platforms = [
+                { key: 'messenger', label: 'Messenger', class: 'messenger' },
+                { key: 'line', label: 'LINE', class: 'line' },
+                { key: 'copy', label: 'Copy Link', class: 'copy' }
+            ];
+
+            const maxValue = Math.max(...platforms.map(p => data[p.key] || 0), 1);
+
+            let html = '<div class="chart-bar-container">';
+            platforms.forEach(platform => {
+                const value = data[platform.key] || 0;
+                const percentage = ((value / maxValue) * 100).toFixed(0);
+
+                html += `
+                    <div class="chart-bar-item">
+                        <span class="chart-bar-label">${platform.label}</span>
+                        <div class="chart-bar-track">
+                            <div class="chart-bar-fill ${platform.class}" style="width: ${percentage}%">
+                                <span class="chart-bar-value">${value.toLocaleString('th-TH')}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            container.innerHTML = html;
+
+        } catch (error) {
+            console.error('Error loading share stats:', error);
+            container.innerHTML = '<div class="analytics-empty">เกิดข้อผิดพลาด</div>';
+        }
+    }
+
+    // Load social link click statistics
+    async function loadSocialStats() {
+        const container = document.getElementById('socialStatsGrid');
+
+        try {
+            const database = firebase.database();
+            const snapshot = await database.ref('buttonClicks/social').once('value');
+            const data = snapshot.val() || {};
+
+            const socials = [
+                {
+                    key: 'instagram',
+                    label: 'Instagram',
+                    class: 'instagram',
+                    icon: '<svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>'
+                },
+                {
+                    key: 'tiktok',
+                    label: 'TikTok',
+                    class: 'tiktok',
+                    icon: '<svg viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/></svg>'
+                },
+                {
+                    key: 'facebook',
+                    label: 'Facebook',
+                    class: 'facebook',
+                    icon: '<svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>'
+                },
+                {
+                    key: 'youtube',
+                    label: 'YouTube',
+                    class: 'youtube',
+                    icon: '<svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>'
+                }
+            ];
+
+            let html = '';
+            socials.forEach(social => {
+                const value = data[social.key] || 0;
+                html += `
+                    <div class="social-stat-card ${social.class}">
+                        <div class="social-stat-icon">${social.icon}</div>
+                        <div class="social-stat-value">${value.toLocaleString('th-TH')}</div>
+                        <div class="social-stat-label">${social.label}</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+
+        } catch (error) {
+            console.error('Error loading social stats:', error);
+            container.innerHTML = '<div class="analytics-empty">เกิดข้อผิดพลาด</div>';
+        }
+    }
+
+    // Load hot comments
+    async function loadHotComments() {
+        const container = document.getElementById('hotCommentsList');
+
+        try {
+            const hotComments = await window.cardCounter.fetchHotComments(5);
+
+            if (!hotComments || hotComments.length === 0) {
+                container.innerHTML = '<div class="analytics-empty">ยังไม่มีความคิดเห็น</div>';
+                return;
+            }
+
+            let html = '';
+            hotComments.forEach(comment => {
+                html += `
+                    <div class="hot-comment-card">
+                        <div class="hot-comment-header">
+                            <span class="hot-comment-user">${escapeHtml(comment.userName || 'Anonymous')}</span>
+                            <span class="hot-comment-replies">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 15a4 4 0 0 0 4 4h9a5 5 0 0 0 0-10H9a3 3 0 0 0 0 6h9"/>
+                                </svg>
+                                ${comment.replyCount || 0} replies
+                            </span>
+                        </div>
+                        <div class="hot-comment-card-name">${escapeHtml(comment.cardName || '')}</div>
+                        <div class="hot-comment-text">${escapeHtml(comment.comment || '')}</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+
+        } catch (error) {
+            console.error('Error loading hot comments:', error);
+            container.innerHTML = '<div class="analytics-empty">เกิดข้อผิดพลาด</div>';
+        }
+    }
+
+    function showAnalyticsError(message) {
+        const content = document.getElementById('analyticsContent');
+        if (content) {
+            content.innerHTML = `<div class="analytics-empty" style="margin-top: 100px;">${message}</div>`;
+        }
+    }
+
+    // Initialize on DOM ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAnalyticsAccess);
+    } else {
+        initAnalyticsAccess();
+    }
+})();

@@ -5,6 +5,165 @@ let selectedCardElement = null;
 let isAnimating = false;
 let isPageReady = false;
 
+// ========================================
+// Background Music Control
+// ========================================
+let isMuted = false;
+let musicStarted = false;
+let audioElement = null;
+
+// ========================================
+// Sound Effects
+// ========================================
+const soundEffects = {
+    cardFlip: null,
+    cardSpread: null,
+    cardSelect: null
+};
+
+// Initialize sound effects
+function initSoundEffects() {
+    soundEffects.cardFlip = new Audio('audio/card_select.mp3');
+    soundEffects.cardFlip.volume = 0.35;
+
+    soundEffects.cardSpread = new Audio('audio/card_spread.mp3');
+    soundEffects.cardSpread.volume = 1.0;
+
+    soundEffects.cardSelect = new Audio('audio/card_select.mp3');
+    soundEffects.cardSelect.volume = 0.35;
+}
+
+// Play a sound effect
+function playSoundEffect(soundName) {
+    if (isMuted) return;
+
+    const sound = soundEffects[soundName];
+    if (sound) {
+        sound.currentTime = 0;
+        sound.play().catch(err => {
+            console.log('Sound effect play failed:', err.message);
+        });
+    }
+}
+
+// Initialize sound effects on load
+initSoundEffects();
+
+// Initialize audio element
+function initAudioElement() {
+    if (audioElement) return audioElement;
+
+    audioElement = document.getElementById('bgMusic');
+    if (audioElement) {
+        // Set source directly on element for better compatibility
+        audioElement.src = 'audio/background.mp3';
+        audioElement.volume = 0.15;
+        audioElement.loop = true;
+        audioElement.load();
+        console.log('Audio element initialized');
+    }
+    return audioElement;
+}
+
+// Update sound indicator visibility
+function updateSoundIndicator(isPlaying) {
+    const indicator = document.getElementById('soundIndicator');
+    if (indicator) {
+        if (isPlaying && !isMuted) {
+            indicator.classList.add('playing');
+        } else {
+            indicator.classList.remove('playing');
+        }
+    }
+}
+
+// Try to play music - must be called from user interaction
+function tryPlayMusic(muteOnFail = false) {
+    const audio = initAudioElement();
+    if (!audio) {
+        console.log('Audio element not found');
+        return;
+    }
+
+    if (musicStarted && !audio.paused) {
+        console.log('Music already playing');
+        updateSoundIndicator(true);
+        return;
+    }
+
+    audio.volume = 0.15;
+
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+        playPromise.then(() => {
+            musicStarted = true;
+            console.log('Music started playing successfully');
+            updateSoundIndicator(true);
+        }).catch(err => {
+            console.log('Audio play failed:', err.message);
+            musicStarted = false;
+            updateSoundIndicator(false);
+            // If autoplay fails on initial load, mute the audio
+            if (muteOnFail) {
+                isMuted = true;
+                audio.muted = true;
+                const muteIconEl = document.getElementById('muteIcon');
+                const unmuteIconEl = document.getElementById('unmuteIcon');
+                if (muteIconEl && unmuteIconEl) {
+                    muteIconEl.style.display = 'none';
+                    unmuteIconEl.style.display = 'block';
+                }
+                console.log('Autoplay blocked - audio muted by default');
+            }
+        });
+    }
+}
+
+// Toggle mute/unmute
+function toggleMute(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    const audio = initAudioElement();
+    const muteIconEl = document.getElementById('muteIcon');
+    const unmuteIconEl = document.getElementById('unmuteIcon');
+
+    if (!audio) {
+        console.log('Audio element not found');
+        return;
+    }
+
+    isMuted = !isMuted;
+    audio.muted = isMuted;
+
+    console.log('Mute toggled:', isMuted);
+
+    if (muteIconEl && unmuteIconEl) {
+        if (isMuted) {
+            muteIconEl.style.display = 'none';
+            unmuteIconEl.style.display = 'block';
+            updateSoundIndicator(false);
+        } else {
+            muteIconEl.style.display = 'block';
+            unmuteIconEl.style.display = 'none';
+            // Try to play if paused
+            if (audio.paused) {
+                audio.play().then(() => {
+                    musicStarted = true;
+                    console.log('Music resumed');
+                    updateSoundIndicator(true);
+                }).catch(() => {
+                    updateSoundIndicator(false);
+                });
+            } else {
+                updateSoundIndicator(true);
+            }
+        }
+    }
+}
+
 // Preload an image and return a promise
 function preloadImage(src) {
     return new Promise((resolve, reject) => {
@@ -18,6 +177,10 @@ function preloadImage(src) {
 // Mark page as ready and enable card clicking with epic reveal
 function markPageReady() {
     isPageReady = true;
+
+    // Try to play background music (may be blocked by browser)
+    // Show prompt if autoplay fails
+    tryPlayMusic(true);
 
     // Reveal the header with epic animation
     const header = document.querySelector('.landing-heading');
@@ -278,6 +441,12 @@ function startExperience() {
         return;
     }
 
+    // Play music on first user interaction (guaranteed to work)
+    tryPlayMusic();
+
+    // Play card select sound effect (magic sparkle)
+    playSoundEffect('cardSelect');
+
     const spinningCard = document.getElementById('spinningCard');
     const spinningCardContainer = document.getElementById('spinningCardContainer');
     const spinningCardWrapper = spinningCardContainer.querySelector('.spinning-card-wrapper');
@@ -509,6 +678,9 @@ function applyStackedLayout() {
 
 // Animate cards from stack to ellipse
 function animateToEllipse() {
+    // Play card spread sound effect
+    playSoundEffect('cardSpread');
+
     const containers = document.querySelectorAll('.card-container');
     const totalCards = containers.length;
     const { radiusX, radiusY, cardWidth, cardHeight, offsetY } = getEllipseParams();
@@ -662,6 +834,9 @@ function selectCard(cardId, cardElement) {
     }
 
     selectedCardElement = cardElement;
+
+    // Play card flip sound effect when picking a card
+    playSoundEffect('cardFlip');
 
     // Reset hover scale immediately to prevent visual jump
     const index = parseInt(cardElement.dataset.index);
@@ -1552,3 +1727,63 @@ function wrapTextLeft(ctx, text, x, y, maxWidth, lineHeight, maxY = Infinity) {
 
 // Initialize - wait for all resources before showing the page
 waitForResources();
+
+// ========================================
+// Setup mute button and audio (runs immediately since script is at end of body)
+// ========================================
+(function setupAudioControls() {
+    // Initialize audio element
+    const audio = initAudioElement();
+
+    const muteBtn = document.getElementById('muteBtn');
+
+    if (muteBtn) {
+        // Handle both click and touch
+        function handleMuteClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleMute(e);
+        }
+
+        muteBtn.addEventListener('click', handleMuteClick);
+        muteBtn.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            handleMuteClick(e);
+        });
+
+        console.log('Mute button initialized');
+    }
+
+    // Add audio event listeners for indicator
+    if (audio) {
+        audio.addEventListener('play', () => {
+            console.log('Audio play event');
+            updateSoundIndicator(true);
+        });
+        audio.addEventListener('pause', () => {
+            console.log('Audio pause event');
+            updateSoundIndicator(false);
+        });
+        audio.addEventListener('ended', () => {
+            console.log('Audio ended event');
+            updateSoundIndicator(false);
+        });
+        audio.addEventListener('error', (e) => {
+            console.log('Audio error:', e);
+            updateSoundIndicator(false);
+        });
+    }
+
+    // Add one-time listener to start music on first user interaction
+    function startMusicOnInteraction() {
+        tryPlayMusic();
+        // Remove listeners after first interaction
+        document.removeEventListener('click', startMusicOnInteraction);
+        document.removeEventListener('touchstart', startMusicOnInteraction);
+    }
+
+    document.addEventListener('click', startMusicOnInteraction);
+    document.addEventListener('touchstart', startMusicOnInteraction);
+
+    console.log('Audio setup complete - waiting for user interaction');
+})();

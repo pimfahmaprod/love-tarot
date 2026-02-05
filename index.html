@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ความหมายไพ่ยิปซี - ใครจะเข้ามาในชีวิตคุณช่วงวาเลนไทน์</title>
 
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
     <!-- Open Graph Meta Tags for Social Sharing -->
     <meta property="og:title" content="ดูดวงความรักวาเลนไทน์ - ใครจะเข้ามาในชีวิตคุณ?">
     <meta property="og:description" content="จับไพ่ทาโรต์เพื่อดูว่าใครจะเข้ามาในชีวิตคุณช่วงวาเลนไทน์นี้">
@@ -157,6 +160,31 @@
 
     <!-- Copy Toast -->
     <div class="copy-toast" id="copyToast">คัดลอกลิงก์แล้ว!</div>
+
+    <!-- Background Music -->
+    <audio id="bgMusic" src="audio/background.mp3" loop preload="auto" autoplay></audio>
+
+    <!-- Sound Wave Indicator -->
+    <div class="sound-indicator" id="soundIndicator">
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+        <div class="bar"></div>
+    </div>
+
+    <!-- Mute Button -->
+    <button type="button" class="mute-btn" id="muteBtn" aria-label="Toggle music">
+        <svg id="muteIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block;">
+            <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+            <path class="sound-wave" d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            <path class="sound-wave" d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+        </svg>
+        <svg id="unmuteIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+            <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+            <line x1="23" y1="9" x2="17" y2="15"/>
+            <line x1="17" y1="9" x2="23" y2="15"/>
+        </svg>
+    </button>
 
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>

@@ -56,18 +56,28 @@ function initializeFirebase() {
 }
 
 // Increment counter for a specific card
-async function incrementCardCounter(cardId) {
+async function incrementCardCounter(cardId, cardName, userId) {
     if (!isFirebaseInitialized || !database) {
         return null;
     }
 
     try {
+        // Increment total card count
         const cardRef = database.ref(`cardPicks/card_${cardId}`);
-
-        // Use transaction to safely increment
         const result = await cardRef.transaction((currentCount) => {
             return (currentCount || 0) + 1;
         });
+
+        // Track user's card pick history
+        if (userId) {
+            const userPickRef = database.ref('userPicks').push();
+            await userPickRef.set({
+                userId: userId,
+                cardId: cardId,
+                cardName: cardName || '',
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+        }
 
         if (result.committed) {
             const newCount = result.snapshot.val();
@@ -253,6 +263,105 @@ function trackRetry() {
     return trackButtonClick('actions', 'retry');
 }
 
+// Submit comment to Firebase
+async function submitCommentToFirebase(cardId, cardName, userId, userName, commentText) {
+    if (!isFirebaseInitialized || !database) {
+        return { success: false, error: 'Firebase not initialized' };
+    }
+
+    try {
+        const commentsRef = database.ref('comments');
+        const newCommentRef = commentsRef.push();
+
+        await newCommentRef.set({
+            cardId: cardId,
+            cardName: cardName,
+            userId: userId,
+            userName: userName.trim(),
+            comment: commentText.trim(),
+            timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+
+        console.log('Comment submitted:', newCommentRef.key);
+        return { success: true, id: newCommentRef.key };
+    } catch (error) {
+        console.warn('Failed to submit comment:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+// Get total comments count
+async function getCommentsCount() {
+    if (!isFirebaseInitialized || !database) {
+        return 0;
+    }
+
+    try {
+        const commentsRef = database.ref('comments');
+        const snapshot = await commentsRef.once('value');
+        return snapshot.numChildren();
+    } catch (error) {
+        console.warn('Failed to get comments count:', error.message);
+        return 0;
+    }
+}
+
+// Subscribe to real-time comments count
+function subscribeToCommentsCount(callback) {
+    if (!isFirebaseInitialized || !database) return;
+
+    const commentsRef = database.ref('comments');
+    commentsRef.on('value', (snapshot) => {
+        const count = snapshot.numChildren();
+        callback(count);
+    });
+}
+
+// Fetch comments from Firebase (for lazy loading)
+async function fetchComments(lastKey = null, limit = 10) {
+    if (!isFirebaseInitialized || !database) {
+        return { comments: [], hasMore: false };
+    }
+
+    try {
+        const commentsRef = database.ref('comments');
+        let query;
+
+        if (lastKey) {
+            query = commentsRef.orderByKey().endBefore(lastKey).limitToLast(limit);
+        } else {
+            query = commentsRef.orderByKey().limitToLast(limit);
+        }
+
+        const snapshot = await query.once('value');
+        const data = snapshot.val();
+
+        if (!data) {
+            return { comments: [], hasMore: false };
+        }
+
+        // Convert to array and reverse (newest first)
+        const comments = Object.entries(data).map(([key, value]) => ({
+            id: key,
+            ...value
+        })).reverse();
+
+        // Check if there are more comments
+        const firstKey = comments.length > 0 ? comments[comments.length - 1].id : null;
+        let hasMore = false;
+
+        if (firstKey) {
+            const checkMore = await commentsRef.orderByKey().endBefore(firstKey).limitToLast(1).once('value');
+            hasMore = checkMore.exists();
+        }
+
+        return { comments, hasMore, lastKey: firstKey };
+    } catch (error) {
+        console.warn('Failed to fetch comments:', error.message);
+        return { comments: [], hasMore: false };
+    }
+}
+
 // Export for use in app.js
 window.cardCounter = {
     increment: handleCardPickCounter,
@@ -262,5 +371,9 @@ window.cardCounter = {
     isEnabled: () => isFirebaseInitialized,
     trackSaveImage: trackSaveImage,
     trackShare: trackShare,
-    trackRetry: trackRetry
+    trackRetry: trackRetry,
+    submitComment: submitCommentToFirebase,
+    fetchComments: fetchComments,
+    getCommentsCount: getCommentsCount,
+    subscribeToCommentsCount: subscribeToCommentsCount
 };

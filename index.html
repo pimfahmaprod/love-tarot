@@ -108,10 +108,29 @@
         <p class="result-quote" id="resultQuote"></p>
         <p class="result-interpretation" id="resultInterpretation"></p>
 
-        <!-- Card Pick Counter -->
-        <div class="pick-counter" id="pickCounter">
-            <span class="pick-counter-icon">🔮</span>
-            <span class="pick-counter-text">ไพ่ใบนี้ถูกจับไปแล้ว <span id="pickCountNumber">-</span> ครั้ง</span>
+        <!-- Comment Section -->
+        <div class="comment-section">
+            <button class="comment-toggle-btn" id="commentToggleBtn" onclick="toggleCommentForm()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span>แสดงความคิดเห็น</span>
+            </button>
+            <div class="comment-form" id="commentForm">
+                <div class="comment-input-group" id="commentNameGroup">
+                    <label for="commentName">ชื่อของคุณ</label>
+                    <input type="text" id="commentName" maxlength="15" placeholder="ใส่ชื่อ (ไม่เกิน 15 ตัวอักษร)">
+                    <span class="char-count"><span id="nameCharCount">0</span>/15</span>
+                </div>
+                <div class="comment-input-group">
+                    <label for="commentText">ความคิดเห็น</label>
+                    <textarea id="commentText" maxlength="250" placeholder="แสดงความคิดเห็นเกี่ยวกับคำทำนาย..."></textarea>
+                    <span class="char-count"><span id="commentCharCount">0</span>/250</span>
+                </div>
+                <button class="comment-submit-btn" id="commentSubmitBtn" onclick="submitComment()">
+                    <span id="commentSubmitText">ส่งความคิดเห็น</span>
+                </button>
+            </div>
         </div>
 
         <!-- Save Image Buttons -->
@@ -171,6 +190,28 @@
         <div class="bar"></div>
         <div class="bar"></div>
     </div>
+
+    <!-- Comments Button -->
+    <button type="button" class="comments-btn" id="commentsBtn" aria-label="View comments">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span class="comments-count" id="commentsCount"></span>
+    </button>
+
+    <!-- Comments Panel -->
+    <div class="comments-panel" id="commentsPanel">
+        <div class="comments-panel-header">
+            <h3>ความคิดเห็นจากผู้เยี่ยมชม</h3>
+            <button class="comments-panel-close" id="commentsPanelClose">&times;</button>
+        </div>
+        <div class="comments-list" id="commentsList">
+            <div class="comments-loading" id="commentsLoading">
+                <span>กำลังโหลด...</span>
+            </div>
+        </div>
+    </div>
+    <div class="comments-overlay" id="commentsOverlay"></div>
 
     <!-- Mute Button -->
     <button type="button" class="mute-btn" id="muteBtn" aria-label="Toggle music">

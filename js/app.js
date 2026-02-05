@@ -959,9 +959,9 @@ function selectCard(cardId, cardElement) {
                 document.getElementById('resultPanel').classList.add('active');
                 isAnimating = false;
 
-                // Increment and display card pick counter
+                // Track card pick in Firebase
                 if (window.cardCounter && window.cardCounter.increment) {
-                    window.cardCounter.increment(card.id);
+                    window.cardCounter.increment(card.id, card.name, getUserId());
                 }
             }, 800);
         }, 500);
@@ -978,9 +978,23 @@ function closeResult() {
 
     const cardGrid = document.getElementById('cardGrid');
 
-    // Hide counter
-    const pickCounter = document.getElementById('pickCounter');
-    if (pickCounter) pickCounter.classList.remove('show');
+    // Reset comment form and button
+    const commentForm = document.getElementById('commentForm');
+    const commentToggleBtn = document.getElementById('commentToggleBtn');
+    if (commentForm) commentForm.classList.remove('show');
+    if (commentToggleBtn) {
+        commentToggleBtn.classList.remove('active');
+        commentToggleBtn.classList.remove('commented');
+        commentToggleBtn.disabled = false;
+        const btnText = commentToggleBtn.querySelector('span');
+        if (btnText) btnText.textContent = 'แสดงความคิดเห็น';
+        // Restore original text bubble icon
+        const svgIcon = commentToggleBtn.querySelector('svg');
+        if (svgIcon) {
+            svgIcon.innerHTML = '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>';
+        }
+    }
+    if (typeof resetCommentForm === 'function') resetCommentForm();
 
     // Hide result panel
     document.getElementById('resultPanel').classList.remove('active');
@@ -1099,6 +1113,353 @@ function copyLink() {
         showToast('คัดลอกข้อความแล้ว!');
     });
 }
+
+// Comment Functions
+const SAVED_NAME_KEY = 'tarot_user_name';
+const USER_ID_KEY = 'tarot_user_id';
+
+function generateUserId() {
+    return 'user_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+function getUserId() {
+    let userId = localStorage.getItem(USER_ID_KEY);
+    if (!userId) {
+        userId = generateUserId();
+        localStorage.setItem(USER_ID_KEY, userId);
+    }
+    return userId;
+}
+
+function getSavedUserName() {
+    return localStorage.getItem(SAVED_NAME_KEY) || '';
+}
+
+function saveUserName(name) {
+    localStorage.setItem(SAVED_NAME_KEY, name.trim());
+}
+
+function toggleCommentForm() {
+    const form = document.getElementById('commentForm');
+    const btn = document.getElementById('commentToggleBtn');
+    const nameGroup = document.getElementById('commentNameGroup');
+    const savedName = getSavedUserName();
+
+    form.classList.toggle('show');
+    btn.classList.toggle('active');
+
+    if (form.classList.contains('show')) {
+        // Check if name is already saved
+        if (savedName && nameGroup) {
+            nameGroup.style.display = 'none';
+        } else if (nameGroup) {
+            nameGroup.style.display = 'block';
+        }
+    } else {
+        // Reset form when closing
+        resetCommentForm();
+    }
+}
+
+function resetCommentForm() {
+    const savedName = getSavedUserName();
+    const nameInput = document.getElementById('commentName');
+    const nameGroup = document.getElementById('commentNameGroup');
+
+    if (!savedName && nameInput) {
+        nameInput.value = '';
+        document.getElementById('nameCharCount').textContent = '0';
+    }
+    if (nameGroup) {
+        nameGroup.style.display = savedName ? 'none' : 'block';
+    }
+
+    document.getElementById('commentText').value = '';
+    document.getElementById('commentCharCount').textContent = '0';
+    document.getElementById('commentSubmitBtn').disabled = false;
+    document.getElementById('commentSubmitBtn').classList.remove('success');
+    document.getElementById('commentSubmitText').textContent = 'ส่งความคิดเห็น';
+}
+
+// Character count listeners
+document.addEventListener('DOMContentLoaded', () => {
+    const nameInput = document.getElementById('commentName');
+    const commentInput = document.getElementById('commentText');
+
+    if (nameInput) {
+        nameInput.addEventListener('input', () => {
+            document.getElementById('nameCharCount').textContent = nameInput.value.length;
+        });
+    }
+
+    if (commentInput) {
+        commentInput.addEventListener('input', () => {
+            document.getElementById('commentCharCount').textContent = commentInput.value.length;
+        });
+    }
+});
+
+async function submitComment() {
+    const nameInput = document.getElementById('commentName');
+    const commentInput = document.getElementById('commentText');
+    const submitBtn = document.getElementById('commentSubmitBtn');
+    const submitText = document.getElementById('commentSubmitText');
+
+    // Use saved name or input value
+    const savedName = getSavedUserName();
+    const userName = savedName || nameInput.value.trim();
+    const commentText = commentInput.value.trim();
+
+    // Validation
+    if (!userName) {
+        showToast('กรุณาใส่ชื่อของคุณ');
+        nameInput.focus();
+        return;
+    }
+
+    if (!commentText) {
+        showToast('กรุณาใส่ความคิดเห็น');
+        commentInput.focus();
+        return;
+    }
+
+    if (!currentCardData) {
+        showToast('เกิดข้อผิดพลาด กรุณาลองใหม่');
+        return;
+    }
+
+    // Disable button and show loading
+    submitBtn.disabled = true;
+    submitText.textContent = 'กำลังส่ง...';
+
+    // Submit to Firebase
+    if (window.cardCounter && window.cardCounter.submitComment) {
+        const userId = getUserId();
+        const result = await window.cardCounter.submitComment(
+            currentCardData.id,
+            currentCardData.name,
+            userId,
+            userName,
+            commentText
+        );
+
+        if (result.success) {
+            // Save name for future comments
+            saveUserName(userName);
+
+            submitBtn.classList.add('success');
+            submitText.textContent = 'ส่งสำเร็จ!';
+            showToast('ขอบคุณสำหรับความคิดเห็น!');
+
+            // Close form and disable button for this round
+            setTimeout(() => {
+                const form = document.getElementById('commentForm');
+                const toggleBtn = document.getElementById('commentToggleBtn');
+
+                form.classList.remove('show');
+                toggleBtn.classList.remove('active');
+                toggleBtn.classList.add('commented');
+                toggleBtn.disabled = true;
+                toggleBtn.querySelector('span').textContent = 'แสดงความคิดเห็นแล้ว';
+                // Change icon to checkmark
+                const svgIcon = toggleBtn.querySelector('svg');
+                if (svgIcon) {
+                    svgIcon.innerHTML = '<path d="M20 6L9 17l-5-5"/>';
+                }
+            }, 1500);
+        } else {
+            submitBtn.disabled = false;
+            submitText.textContent = 'ส่งความคิดเห็น';
+            showToast('เกิดข้อผิดพลาด กรุณาลองใหม่');
+        }
+    } else {
+        submitBtn.disabled = false;
+        submitText.textContent = 'ส่งความคิดเห็น';
+        showToast('ระบบยังไม่พร้อม กรุณาลองใหม่');
+    }
+}
+
+// ========================================
+// Comments Panel
+// ========================================
+let commentsLastKey = null;
+let commentsHasMore = true;
+let isLoadingComments = false;
+
+function initCommentsPanel() {
+    const commentsBtn = document.getElementById('commentsBtn');
+    const commentsPanel = document.getElementById('commentsPanel');
+    const commentsOverlay = document.getElementById('commentsOverlay');
+    const commentsPanelClose = document.getElementById('commentsPanelClose');
+    const commentsList = document.getElementById('commentsList');
+
+    if (commentsBtn) {
+        commentsBtn.addEventListener('click', openCommentsPanel);
+    }
+
+    if (commentsPanelClose) {
+        commentsPanelClose.addEventListener('click', closeCommentsPanel);
+    }
+
+    if (commentsOverlay) {
+        commentsOverlay.addEventListener('click', closeCommentsPanel);
+    }
+
+    // Lazy loading on scroll DOWN (load older comments)
+    if (commentsList) {
+        commentsList.addEventListener('scroll', () => {
+            if (isLoadingComments || !commentsHasMore) return;
+
+            // Load more when scrolling near bottom
+            const { scrollTop, scrollHeight, clientHeight } = commentsList;
+            if (scrollTop + clientHeight >= scrollHeight - 100) {
+                loadMoreComments();
+            }
+        });
+    }
+
+    // Subscribe to comments count for badge
+    setTimeout(() => {
+        if (window.cardCounter && window.cardCounter.subscribeToCommentsCount) {
+            window.cardCounter.subscribeToCommentsCount(updateCommentsCountBadge);
+        }
+    }, 1000);
+}
+
+function updateCommentsCountBadge(count) {
+    const badge = document.getElementById('commentsCount');
+    if (!badge) return;
+
+    if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.classList.add('show');
+    } else {
+        badge.classList.remove('show');
+    }
+}
+
+function openCommentsPanel() {
+    const commentsPanel = document.getElementById('commentsPanel');
+    const commentsOverlay = document.getElementById('commentsOverlay');
+
+    commentsPanel.classList.add('show');
+    commentsOverlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+
+    // Reset and load comments
+    commentsLastKey = null;
+    commentsHasMore = true;
+    loadComments(true);
+}
+
+function closeCommentsPanel() {
+    const commentsPanel = document.getElementById('commentsPanel');
+    const commentsOverlay = document.getElementById('commentsOverlay');
+
+    commentsPanel.classList.remove('show');
+    commentsOverlay.classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+async function loadComments(reset = false) {
+    if (isLoadingComments) return;
+    isLoadingComments = true;
+
+    const commentsList = document.getElementById('commentsList');
+    const loadingEl = document.getElementById('commentsLoading');
+
+    if (reset) {
+        commentsList.innerHTML = '';
+        commentsList.appendChild(loadingEl);
+        loadingEl.style.display = 'block';
+        commentsLastKey = null;
+    }
+
+    if (!window.cardCounter || !window.cardCounter.fetchComments) {
+        loadingEl.innerHTML = '<span>ไม่สามารถโหลดความคิดเห็นได้</span>';
+        isLoadingComments = false;
+        return;
+    }
+
+    const result = await window.cardCounter.fetchComments(commentsLastKey, 10);
+
+    loadingEl.style.display = 'none';
+
+    if (result.comments.length === 0 && reset) {
+        commentsList.innerHTML = `
+            <div class="comments-empty">
+                <div class="comments-empty-icon">💬</div>
+                <div class="comments-empty-text">ยังไม่มีความคิดเห็น<br>เป็นคนแรกที่แสดงความคิดเห็นกันเถอะ!</div>
+            </div>
+        `;
+        isLoadingComments = false;
+        return;
+    }
+
+    // Show newest at top, oldest at bottom (default order from fetchComments)
+    result.comments.forEach(comment => {
+        const card = createCommentCard(comment);
+        commentsList.appendChild(card);
+    });
+
+    commentsLastKey = result.lastKey;
+    commentsHasMore = result.hasMore;
+
+    isLoadingComments = false;
+}
+
+function loadMoreComments() {
+    if (commentsHasMore && !isLoadingComments) {
+        loadComments(false);
+    }
+}
+
+function createCommentCard(comment) {
+    const card = document.createElement('div');
+    card.className = 'comment-card';
+
+    const date = comment.timestamp ? new Date(comment.timestamp) : new Date();
+    const dateStr = formatCommentDate(date);
+
+    card.innerHTML = `
+        <div class="comment-card-header">
+            <span class="comment-card-name">${escapeHtml(comment.userName || 'ไม่ระบุชื่อ')}</span>
+            <span class="comment-card-date">${dateStr}</span>
+        </div>
+        <div class="comment-card-tarot">${escapeHtml(comment.cardName || 'ไพ่ทาโรต์')}</div>
+        <div class="comment-card-text">${escapeHtml(comment.comment || '')}</div>
+    `;
+
+    return card;
+}
+
+function formatCommentDate(date) {
+    const now = new Date();
+    const diff = now - date;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (minutes < 1) return 'เมื่อสักครู่';
+    if (minutes < 60) return `${minutes} นาทีที่แล้ว`;
+    if (hours < 24) return `${hours} ชั่วโมงที่แล้ว`;
+    if (days < 7) return `${days} วันที่แล้ว`;
+
+    return date.toLocaleDateString('th-TH', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Initialize comments panel on DOM ready
+document.addEventListener('DOMContentLoaded', initCommentsPanel);
 
 // Save Image Functions
 let currentCardData = null;

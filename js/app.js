@@ -271,45 +271,72 @@ async function waitForResources() {
     startCardRotation();
     createFloatingSparkles();
 
-    // Wait for fonts
-    if (document.fonts && document.fonts.ready) {
-        await document.fonts.ready;
-    }
+    // Load tarot data and essential images in parallel
+    const essentialImages = [
+        'images/card_back_red.png',
+        ...spinningCardImages.slice(0, 3) // Only first 3 spinning images
+    ];
 
-    // Wait for tarot data to load first
-    if (!tarotData) {
-        try {
-            const response = await fetch('valentine_tarot.json');
-            tarotData = await response.json();
-        } catch (error) {
-            console.error('Error loading tarot data:', error);
+    // Load data and essential images simultaneously
+    await Promise.all([
+        // Load tarot data
+        (async () => {
+            if (!tarotData) {
+                try {
+                    const response = await fetch('valentine_tarot.json');
+                    tarotData = await response.json();
+                } catch (error) {
+                    console.error('Error loading tarot data:', error);
+                }
+            }
+        })(),
+        // Preload essential images only
+        ...essentialImages.map(src => preloadImage(src))
+    ]);
+
+    // Render cards (they use card back image which is already loaded)
+    renderCards();
+
+    // Mark page as ready immediately - don't wait for all images
+    markPageReady();
+
+    // Load remaining images in background (non-blocking)
+    loadRemainingImagesInBackground();
+}
+
+// Load remaining images in background after page is interactive
+function loadRemainingImagesInBackground() {
+    // Remaining spinning card images
+    const remainingSpinning = spinningCardImages.slice(3);
+
+    // All tarot card front images
+    const tarotImages = (tarotData && tarotData.cards)
+        ? tarotData.cards.map(card => `images/tarot/${card.image}`)
+        : [];
+
+    // Load in small batches to not block the main thread
+    const allImages = [...remainingSpinning, ...tarotImages];
+    let index = 0;
+    const batchSize = 5;
+
+    function loadBatch() {
+        const batch = allImages.slice(index, index + batchSize);
+        if (batch.length === 0) return;
+
+        batch.forEach(src => {
+            const img = new Image();
+            img.src = src;
+        });
+
+        index += batchSize;
+        // Load next batch after a short delay
+        if (index < allImages.length) {
+            setTimeout(loadBatch, 100);
         }
     }
 
-    // Collect all images to preload
-    const imagesToPreload = [
-        'images/card_back_red.png',
-        ...spinningCardImages
-    ];
-
-    // Add all tarot card images from data
-    if (tarotData && tarotData.cards) {
-        tarotData.cards.forEach(card => {
-            imagesToPreload.push(`images/tarot/${card.image}`);
-        });
-    }
-
-    // Preload all images
-    await Promise.all(imagesToPreload.map(src => preloadImage(src)));
-
-    // Render cards after images are loaded
-    renderCards();
-
-    // Small delay for smooth transition
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Mark page as ready and enable clicking
-    markPageReady();
+    // Start loading after a small delay to let the page settle
+    setTimeout(loadBatch, 500);
 }
 
 // Card images for spinning display

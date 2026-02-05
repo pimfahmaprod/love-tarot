@@ -1507,12 +1507,33 @@ function openCommentsPanel() {
         if (newTab) newTab.classList.add('active');
     }
 
+    // Check if user has comments and show/hide "ของฉัน" tab
+    checkUserHasComments();
+
     // Reset and load comments (subscription happens after load completes)
     commentsLastKey = null;
     commentsHasMore = true;
     displayedCommentIds.clear();
     newestCommentTimestamp = 0;
     loadComments(true);
+}
+
+// Check if user has any comments and show/hide the "Me" tab
+async function checkUserHasComments() {
+    const commentsTabs = document.getElementById('commentsTabs');
+    if (!commentsTabs) return;
+
+    const meTab = commentsTabs.querySelector('[data-tab="me"]');
+    if (!meTab) return;
+
+    const userId = getUserId();
+    if (!window.cardCounter || !window.cardCounter.fetchCommentsByUserId) {
+        meTab.style.display = 'none';
+        return;
+    }
+
+    const userComments = await window.cardCounter.fetchCommentsByUserId(userId, 1);
+    meTab.style.display = userComments.length > 0 ? '' : 'none';
 }
 
 function updateCommentsPanelUser() {

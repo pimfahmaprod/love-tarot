@@ -617,6 +617,38 @@ async function fetchCommentsByUserId(userId, limit = 50) {
     }
 }
 
+// Fetch card pick rankings (top cards by pick count)
+async function fetchCardRankings(limit = 5) {
+    if (!isFirebaseInitialized || !database) {
+        return [];
+    }
+
+    try {
+        const cardPicksRef = database.ref('cardPicks');
+        const snapshot = await cardPicksRef.once('value');
+        const data = snapshot.val();
+
+        if (!data) {
+            return [];
+        }
+
+        // Convert to array and sort by count (descending)
+        const rankings = Object.entries(data)
+            .map(([key, count]) => {
+                // Extract card ID from key (e.g., "card_1" -> "1")
+                const cardId = key.replace('card_', '');
+                return { cardId, count };
+            })
+            .sort((a, b) => b.count - a.count)
+            .slice(0, limit);
+
+        return rankings;
+    } catch (error) {
+        console.warn('Failed to fetch card rankings:', error.message);
+        return [];
+    }
+}
+
 // Export for use in app.js
 window.cardCounter = {
     increment: handleCardPickCounter,
@@ -639,5 +671,6 @@ window.cardCounter = {
     getReplyCount: getReplyCount,
     fetchTopCommentsByReplies: fetchTopCommentsByReplies,
     fetchHotComments: fetchHotComments,
-    fetchCommentsByUserId: fetchCommentsByUserId
+    fetchCommentsByUserId: fetchCommentsByUserId,
+    fetchCardRankings: fetchCardRankings
 };

@@ -284,7 +284,6 @@ async function waitForResources() {
     // Collect all images to preload
     const imagesToPreload = [
         'images/card_back_red.png',
-        'images/website_theme.jpg',
         ...spinningCardImages
     ];
 
@@ -1449,6 +1448,7 @@ function switchCommentsTab(tabName) {
     commentsHasMore = true;
     displayedCommentIds.clear();
     expandedCommentCard = null;
+    navigatedCommentCard = null;
 
     // Unsubscribe from real-time updates
     if (window.cardCounter && window.cardCounter.unsubscribeFromNewComments) {
@@ -1486,6 +1486,7 @@ let newestCommentTimestamp = 0;
 
 // Track currently expanded comment card
 let expandedCommentCard = null;
+let navigatedCommentCard = null; // Track the card that was navigated from related comments
 
 function openCommentsPanel() {
     const commentsPanel = document.getElementById('commentsPanel');
@@ -1573,6 +1574,7 @@ function closeCommentsPanel() {
 
     // Reset expanded card state
     expandedCommentCard = null;
+    navigatedCommentCard = null;
 
     // Unsubscribe from real-time updates
     if (window.cardCounter && window.cardCounter.unsubscribeFromNewComments) {
@@ -2099,15 +2101,17 @@ async function expandCommentCard(card, comment) {
 
     // Load full interpretation from tarotData
     const interpretationEl = card.querySelector('.comment-card-full-interpretation');
-    if (tarotData && tarotData.cards) {
-        const tarotCard = tarotData.cards.find(c => c.id === comment.cardId || c.name === comment.cardName);
-        if (tarotCard) {
-            interpretationEl.textContent = tarotCard.interpretation;
+    if (interpretationEl) {
+        if (tarotData && tarotData.cards) {
+            const tarotCard = tarotData.cards.find(c => c.id === comment.cardId || c.name === comment.cardName);
+            if (tarotCard) {
+                interpretationEl.textContent = tarotCard.interpretation;
+            } else {
+                interpretationEl.textContent = 'ไม่พบคำทำนายสำหรับไพ่ใบนี้';
+            }
         } else {
-            interpretationEl.textContent = 'ไม่พบคำทำนายสำหรับไพ่ใบนี้';
+            interpretationEl.textContent = 'กำลังโหลดข้อมูล...';
         }
-    } else {
-        interpretationEl.textContent = 'กำลังโหลดข้อมูล...';
     }
 
     // Auto-load replies
@@ -2115,6 +2119,10 @@ async function expandCommentCard(card, comment) {
 
     // Load related comments
     const relatedListEl = card.querySelector('.related-comments-list');
+    if (!relatedListEl) {
+        console.warn('relatedListEl not found in card');
+        return;
+    }
     relatedListEl.innerHTML = '<div class="related-comment-loading">กำลังโหลด...</div>';
 
     if (window.cardCounter && window.cardCounter.fetchCommentsByCardId) {
@@ -2125,19 +2133,54 @@ async function expandCommentCard(card, comment) {
         );
 
         if (relatedComments.length > 0) {
-            relatedListEl.innerHTML = relatedComments.map(rc => {
+            // Fetch reply counts for all related comments
+            const relatedWithReplyCounts = await Promise.all(
+                relatedComments.map(async (rc) => {
+                    let replyCount = 0;
+                    if (window.cardCounter && window.cardCounter.getReplyCount) {
+                        replyCount = await window.cardCounter.getReplyCount(rc.id);
+                    }
+                    return { ...rc, replyCount };
+                })
+            );
+
+            relatedListEl.innerHTML = relatedWithReplyCounts.map(rc => {
                 const rcDate = rc.timestamp ? new Date(rc.timestamp) : new Date();
                 const rcDateStr = formatCommentDate(rcDate);
+                const replyBadge = rc.replyCount > 0
+                    ? `<span class="related-comment-replies">💬 ${rc.replyCount}</span>`
+                    : '';
+                // Store full comment data as JSON for direct use
+                const commentDataJson = JSON.stringify({
+                    id: rc.id,
+                    cardId: rc.cardId,
+                    cardName: rc.cardName,
+                    cardImage: rc.cardImage || '',
+                    userName: rc.userName || 'Anonymous',
+                    comment: rc.comment || '',
+                    timestamp: rc.timestamp
+                });
                 return `
-                    <div class="related-comment">
+                    <div class="related-comment" data-comment-id="${rc.id}" data-comment='${commentDataJson.replace(/'/g, "&#39;")}' style="cursor: pointer;">
                         <div class="related-comment-header">
                             <span class="related-comment-name">${escapeHtml(rc.userName || 'Anonymous')}</span>
+                            ${replyBadge}
                             <span class="related-comment-date">${rcDateStr}</span>
                         </div>
                         <div class="related-comment-text">${escapeHtml(rc.comment || '')}</div>
                     </div>
                 `;
             }).join('');
+
+            // Add click handlers to navigate to related comments
+            relatedListEl.querySelectorAll('.related-comment').forEach((el, index) => {
+                const commentData = relatedWithReplyCounts[index];
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    navigateToRelatedComment(commentData);
+                });
+            });
         } else {
             relatedListEl.innerHTML = '<div class="related-comment-empty">ยังไม่มีความคิดเห็นอื่นบนไพ่ใบนี้</div>';
         }
@@ -2148,6 +2191,69 @@ async function expandCommentCard(card, comment) {
 
 function collapseCommentCard(card) {
     card.classList.remove('expanded');
+
+    // If this is a navigated card, fade it out and remove it
+    if (card.classList.contains('navigated-card')) {
+        card.classList.add('fading-out');
+        setTimeout(() => {
+            if (card.parentNode) card.remove();
+        }, 300);
+        if (navigatedCommentCard === card) {
+            navigatedCommentCard = null;
+        }
+    }
+}
+
+async function navigateToRelatedComment(commentData) {
+    try {
+        const commentsList = document.getElementById('commentsList');
+        if (!commentsList) return;
+
+        // Collapse any currently expanded card first
+        if (expandedCommentCard) {
+            collapseCommentCard(expandedCommentCard);
+            expandedCommentCard = null;
+        }
+
+        // Remove previous navigated card with fade animation (keep original cards intact)
+        if (navigatedCommentCard && navigatedCommentCard.parentNode) {
+            navigatedCommentCard.classList.add('fading-out');
+            const oldCard = navigatedCommentCard;
+            navigatedCommentCard = null;
+            await new Promise(resolve => setTimeout(resolve, 300));
+            if (oldCard.parentNode) oldCard.remove();
+        }
+
+        // Create a duplicated card (don't remove original) and insert in "ล่าสุด" (Recent) section
+        const newCard = createCommentCard(commentData, false);
+        newCard.classList.add('navigated-card'); // Mark as navigated
+
+        // Find the "ล่าสุด" section header and insert after it
+        const recentHeader = commentsList.querySelector('.comments-section-title.recent');
+        if (recentHeader) {
+            // Insert right after the recent header
+            recentHeader.after(newCard);
+        } else {
+            // Fallback: append to list if no recent section found
+            commentsList.appendChild(newCard);
+        }
+
+        // Track displayed ID and navigated card
+        displayedCommentIds.add(commentData.id);
+        navigatedCommentCard = newCard;
+
+        // Scroll to the card
+        newCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Wait for scroll, then expand
+        await new Promise(resolve => setTimeout(resolve, 300));
+        await expandCommentCard(newCard, commentData);
+        expandedCommentCard = newCard;
+
+    } catch (error) {
+        console.error('Error navigating to related comment:', error);
+        showToast('เกิดข้อผิดพลาด กรุณาลองใหม่');
+    }
 }
 
 function formatCommentDate(date) {
@@ -2928,4 +3034,82 @@ waitForResources();
     document.addEventListener('touchstart', startMusicOnInteraction);
 
     console.log('Audio setup complete - waiting for user interaction');
+})();
+
+// =============================================
+// Ranking Panel
+// =============================================
+(function initRankingPanel() {
+    const totalCounter = document.getElementById('totalCounter');
+    const rankingPanel = document.getElementById('rankingPanel');
+    const rankingOverlay = document.getElementById('rankingOverlay');
+    const rankingList = document.getElementById('rankingList');
+
+    if (!totalCounter || !rankingPanel || !rankingOverlay) return;
+
+    // Trophy icons for each rank
+    const trophyIcons = ['🥇', '🥈', '🥉', '🏅', '🎖️'];
+
+    // Open ranking panel
+    totalCounter.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!totalCounter.classList.contains('show')) return;
+
+        rankingPanel.classList.add('show');
+        rankingOverlay.classList.add('show');
+        await loadRankings();
+    });
+
+    // Close ranking panel
+    rankingOverlay.addEventListener('click', closeRankingPanel);
+
+    function closeRankingPanel() {
+        rankingPanel.classList.remove('show');
+        rankingOverlay.classList.remove('show');
+    }
+
+    // Load and display rankings
+    async function loadRankings() {
+        if (!window.cardCounter || !window.cardCounter.fetchCardRankings) {
+            rankingList.innerHTML = '<div class="ranking-loading">ไม่สามารถโหลดข้อมูลได้</div>';
+            return;
+        }
+
+        rankingList.innerHTML = '<div class="ranking-loading">กำลังโหลด...</div>';
+
+        try {
+            const rankings = await window.cardCounter.fetchCardRankings(5);
+
+            if (rankings.length === 0) {
+                rankingList.innerHTML = '<div class="ranking-loading">ยังไม่มีข้อมูล</div>';
+                return;
+            }
+
+            // Get total picks for percentage calculation
+            const totalPicks = await window.cardCounter.getTotal();
+            const totalCount = totalPicks || rankings.reduce((sum, r) => sum + r.count, 0);
+
+            // Get card data from tarotData
+            const rankingHTML = rankings.map((rank, index) => {
+                const cardData = (tarotData && tarotData.cards) ? tarotData.cards.find(c => c.id == rank.cardId) : null;
+                const cardName = cardData ? cardData.name : `การ์ด ${rank.cardId}`;
+                const cardImage = cardData ? `images/tarot/${cardData.image}` : '';
+                const percentage = totalCount > 0 ? ((rank.count / totalCount) * 100).toFixed(1) : 0;
+
+                return `
+                    <div class="ranking-item">
+                        <span class="ranking-trophy">${trophyIcons[index] || '🎖️'}</span>
+                        ${cardImage ? `<img src="${cardImage}" alt="${cardName}" class="ranking-card-image">` : ''}
+                        <span class="ranking-card-name">${escapeHtml(cardName)}</span>
+                        <span class="ranking-count">${percentage}%</span>
+                    </div>
+                `;
+            }).join('');
+
+            rankingList.innerHTML = rankingHTML;
+        } catch (error) {
+            console.error('Error loading rankings:', error);
+            rankingList.innerHTML = '<div class="ranking-loading">เกิดข้อผิดพลาด</div>';
+        }
+    }
 })();

@@ -264,7 +264,7 @@ function trackRetry() {
 }
 
 // Submit comment to Firebase
-async function submitCommentToFirebase(cardId, cardName, userId, userName, commentText) {
+async function submitCommentToFirebase(cardId, cardName, cardImage, userId, userName, commentText) {
     if (!isFirebaseInitialized || !database) {
         return { success: false, error: 'Firebase not initialized' };
     }
@@ -276,6 +276,7 @@ async function submitCommentToFirebase(cardId, cardName, userId, userName, comme
         await newCommentRef.set({
             cardId: cardId,
             cardName: cardName,
+            cardImage: cardImage || '',
             userId: userId,
             userName: userName.trim(),
             comment: commentText.trim(),
@@ -318,7 +319,9 @@ function subscribeToCommentsCount(callback) {
 }
 
 // Subscribe to real-time new comments (for live updates)
-let commentsListener = null;
+let commentsListenerRef = null;
+let commentsListenerCallback = null;
+
 function subscribeToNewComments(callback) {
     if (!isFirebaseInitialized || !database) return null;
 
@@ -326,33 +329,28 @@ function subscribeToNewComments(callback) {
     unsubscribeFromNewComments();
 
     const commentsRef = database.ref('comments');
-    // Listen for new children added
-    commentsListener = commentsRef.orderByKey().limitToLast(1);
+    commentsListenerRef = commentsRef;
 
-    let isFirstLoad = true;
-    commentsListener.on('child_added', (snapshot) => {
-        // Skip first load (it's the existing last comment)
-        if (isFirstLoad) {
-            isFirstLoad = false;
-            return;
-        }
-
+    // Listen for ALL child_added events - duplicates filtered by callback
+    commentsListenerCallback = (snapshot) => {
         const comment = {
             id: snapshot.key,
             ...snapshot.val()
         };
         callback(comment);
-    });
+    };
 
-    return commentsListener;
+    commentsListenerRef.on('child_added', commentsListenerCallback);
+    return commentsListenerRef;
 }
 
 // Unsubscribe from new comments listener
 function unsubscribeFromNewComments() {
-    if (commentsListener) {
-        commentsListener.off();
-        commentsListener = null;
+    if (commentsListenerRef && commentsListenerCallback) {
+        commentsListenerRef.off('child_added', commentsListenerCallback);
     }
+    commentsListenerRef = null;
+    commentsListenerCallback = null;
 }
 
 // Fetch comments from Firebase (for lazy loading)

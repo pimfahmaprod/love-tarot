@@ -1238,6 +1238,7 @@ async function submitComment() {
         const result = await window.cardCounter.submitComment(
             currentCardData.id,
             currentCardData.name,
+            currentCardData.image,
             userId,
             userName,
             commentText
@@ -1354,16 +1355,11 @@ function openCommentsPanel() {
     commentsOverlay.classList.add('show');
     document.body.style.overflow = 'hidden';
 
-    // Reset and load comments
+    // Reset and load comments (subscription happens after load completes)
     commentsLastKey = null;
     commentsHasMore = true;
     displayedCommentIds.clear();
     loadComments(true);
-
-    // Subscribe to real-time new comments
-    if (window.cardCounter && window.cardCounter.subscribeToNewComments) {
-        window.cardCounter.subscribeToNewComments(handleNewComment);
-    }
 }
 
 function closeCommentsPanel() {
@@ -1452,6 +1448,11 @@ async function loadComments(reset = false) {
             </div>
         `;
         isLoadingComments = false;
+
+        // Subscribe to real-time updates even when empty
+        if (window.cardCounter && window.cardCounter.subscribeToNewComments) {
+            window.cardCounter.subscribeToNewComments(handleNewComment);
+        }
         return;
     }
 
@@ -1469,6 +1470,11 @@ async function loadComments(reset = false) {
     commentsHasMore = result.hasMore;
 
     isLoadingComments = false;
+
+    // Subscribe to real-time updates after initial load (only on reset/first load)
+    if (reset && window.cardCounter && window.cardCounter.subscribeToNewComments) {
+        window.cardCounter.subscribeToNewComments(handleNewComment);
+    }
 }
 
 function loadMoreComments() {
@@ -1484,14 +1490,37 @@ function createCommentCard(comment) {
     const date = comment.timestamp ? new Date(comment.timestamp) : new Date();
     const dateStr = formatCommentDate(date);
 
+    // Get card image - use cardImage if available, otherwise construct from cardName
+    let cardImagePath = '';
+    if (comment.cardImage && comment.cardImage.length > 0) {
+        cardImagePath = comment.cardImage;
+    } else if (comment.cardName && comment.cardName.length > 0) {
+        // Backward compatibility: construct image path from card name
+        // Image files are named like "THE LOVERS.png", "THE STAR.png", etc.
+        cardImagePath = comment.cardName + '.png';
+    }
+
+    const hasImage = cardImagePath.length > 0;
+    const imageHtml = hasImage
+        ? `<div class="comment-card-image"><img src="images/tarot/${escapeHtml(cardImagePath)}" alt="${escapeHtml(comment.cardName || 'Tarot')}" onerror="this.parentElement.style.display='none'"></div>`
+        : '';
+
     card.innerHTML = `
-        <div class="comment-card-header">
-            <span class="comment-card-name">${escapeHtml(comment.userName || 'ไม่ระบุชื่อ')}</span>
-            <span class="comment-card-date">${dateStr}</span>
+        ${imageHtml}
+        <div class="comment-card-content">
+            <div class="comment-card-header">
+                <span class="comment-card-name">${escapeHtml(comment.userName || 'ไม่ระบุชื่อ')}</span>
+                <span class="comment-card-tarot">${escapeHtml(comment.cardName || 'ไพ่ทาโรต์')}</span>
+            </div>
+            <div class="comment-card-text">${escapeHtml(comment.comment || '')}</div>
+            <div class="comment-card-date">${dateStr}</div>
         </div>
-        <div class="comment-card-tarot">${escapeHtml(comment.cardName || 'ไพ่ทาโรต์')}</div>
-        <div class="comment-card-text">${escapeHtml(comment.comment || '')}</div>
     `;
+
+    // Add class for styling when image is present
+    if (hasImage) {
+        card.classList.add('with-image');
+    }
 
     return card;
 }

@@ -765,6 +765,20 @@ body {
     opacity: 1;
 }
 
+/* Version tag - bottom right corner */
+.version-tag {
+    position: fixed;
+    bottom: 3px;
+    right: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.55rem;
+    color: rgba(114, 47, 55, 0.25);
+    letter-spacing: 0.5px;
+    pointer-events: none;
+    user-select: none;
+    z-index: 1;
+}
+
 /* Social Icons */
 .social-icons {
     display: flex;

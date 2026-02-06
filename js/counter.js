@@ -49,8 +49,48 @@ let isFirebaseInitialized = false;
 // ========================================
 // Local Cache System (reduces Firebase reads)
 // ========================================
-const CACHE_PREFIX = 'tarot_cache_';
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_VERSION = 'v2'; // Increment to clear old caches
+const CACHE_PREFIX = `tarot_cache_${CACHE_VERSION}_`;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes (default)
+const CACHE_DURATION_LONG = 30 * 60 * 1000; // 30 minutes (for rankings, hot comments)
+const CACHE_DURATION_MEDIUM = 15 * 60 * 1000; // 15 minutes (for user-specific data)
+
+// Clear old cache versions on load
+(function clearOldCaches() {
+    try {
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('tarot_cache_') && !key.startsWith(CACHE_PREFIX)) {
+                keysToRemove.push(key);
+            }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        if (keysToRemove.length > 0) {
+            console.log('Cleared', keysToRemove.length, 'old cache entries');
+        }
+    } catch (e) {
+        // ignore
+    }
+})();
+
+// Cache durations per key type
+const CACHE_DURATIONS = {
+    totalPicks: CACHE_DURATION_LONG,
+    cardRankings: CACHE_DURATION_LONG,
+    hotComments: CACHE_DURATION_LONG,
+    commentsFirstPage: CACHE_DURATION,
+    commentsCount: CACHE_DURATION,
+    userRepliedTo: CACHE_DURATION_MEDIUM
+};
+
+function getCacheDuration(key) {
+    // Check if key starts with any known prefix
+    for (const [prefix, duration] of Object.entries(CACHE_DURATIONS)) {
+        if (key.startsWith(prefix)) return duration;
+    }
+    return CACHE_DURATION;
+}
 
 function getCached(key) {
     try {
@@ -58,7 +98,8 @@ function getCached(key) {
         if (!cached) return null;
 
         const { data, timestamp } = JSON.parse(cached);
-        if (Date.now() - timestamp > CACHE_DURATION) {
+        const duration = getCacheDuration(key);
+        if (Date.now() - timestamp > duration) {
             localStorage.removeItem(CACHE_PREFIX + key);
             return null;
         }
@@ -321,6 +362,8 @@ async function submitCommentToFirebase(cardId, cardName, cardImage, userId, user
 
         // Clear comments cache
         clearCache('commentsCount');
+        clearCache('commentsFirstPage_10');
+        clearCache('hotComments_20');
 
         return { success: true, id: newCommentRef.key };
     } catch (error) {
@@ -386,10 +429,19 @@ function unsubscribeFromNewComments() {
     commentsListenerCallback = null;
 }
 
-// Fetch comments (with cache for recent)
+// Fetch comments (with cache for first page)
 async function fetchComments(lastKey = null, limit = 10) {
     if (!isFirebaseInitialized || !database) {
         return { comments: [], hasMore: false };
+    }
+
+    // Cache only first page (no lastKey)
+    const isFirstPage = !lastKey;
+    const cacheKey = `commentsFirstPage_${limit}`;
+
+    if (isFirstPage) {
+        const cached = getCached(cacheKey);
+        if (cached !== null) return cached;
     }
 
     try {
@@ -422,7 +474,14 @@ async function fetchComments(lastKey = null, limit = 10) {
             hasMore = checkMore.exists();
         }
 
-        return { comments, hasMore, lastKey: firstKey };
+        const result = { comments, hasMore, lastKey: firstKey };
+
+        // Cache first page only (skip caching if empty to allow retry)
+        if (isFirstPage && comments.length > 0) {
+            setCache(cacheKey, result);
+        }
+
+        return result;
     } catch (error) {
         console.warn('Failed to fetch comments:', error.message);
         return { comments: [], hasMore: false };
@@ -431,6 +490,15 @@ async function fetchComments(lastKey = null, limit = 10) {
 
 async function fetchCommentsByCardId(cardId, excludeCommentId = null, limit = 5) {
     if (!isFirebaseInitialized || !database) return [];
+
+    // Cache for 5 minutes per card
+    const cacheKey = `cardComments_${cardId}_${limit}`;
+    const cached = getCached(cacheKey);
+
+    // Use cache but still filter excludeCommentId
+    if (cached !== null) {
+        return cached.filter(c => c.id !== excludeCommentId).slice(0, limit);
+    }
 
     try {
         const commentsRef = database.ref('comments');
@@ -443,11 +511,15 @@ async function fetchCommentsByCardId(cardId, excludeCommentId = null, limit = 5)
 
         const comments = Object.entries(data)
             .map(([key, value]) => ({ id: key, ...value }))
-            .filter(c => c.id !== excludeCommentId)
             .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
-            .slice(0, limit);
+            .slice(0, limit + 1);
 
-        return comments;
+        // Cache all fetched comments (before exclusion filter) - only if we have results
+        if (comments.length > 0) {
+            setCache(cacheKey, comments);
+        }
+
+        return comments.filter(c => c.id !== excludeCommentId).slice(0, limit);
     } catch (error) {
         console.warn('Failed to fetch comments by cardId:', error.message);
         return [];
@@ -473,6 +545,10 @@ async function submitReply(commentId, userId, userName, replyText) {
             text: replyText.trim(),
             timestamp: firebase.database.ServerValue.TIMESTAMP
         });
+
+        // Clear hot comments cache (reply counts changed)
+        clearCache('hotComments_20');
+        clearCache(`userRepliedTo_${userId}_20`);
 
         return { success: true, id: newReplyRef.key };
     } catch (error) {
@@ -553,6 +629,11 @@ async function fetchTopCommentsByReplies(limit = 3) {
 async function fetchHotComments(limit = 20) {
     if (!isFirebaseInitialized || !database) return [];
 
+    // Check cache first (30-min cache)
+    const cacheKey = `hotComments_${limit}`;
+    const cached = getCached(cacheKey);
+    if (cached !== null) return cached;
+
     try {
         // Fetch replies node to find comments with the most replies
         const repliesRef = database.ref('replies');
@@ -584,7 +665,12 @@ async function fetchHotComments(limit = 20) {
             })
         );
 
-        return comments.filter(c => c !== null);
+        const result = comments.filter(c => c !== null);
+        // Only cache if we have results
+        if (result.length > 0) {
+            setCache(cacheKey, result);
+        }
+        return result;
     } catch (error) {
         console.warn('Failed to fetch hot comments:', error.message);
         return [];
@@ -617,6 +703,11 @@ async function fetchCommentsByUserId(userId, limit = 50) {
 async function fetchCommentsUserRepliedTo(userId, limit = 20) {
     if (!isFirebaseInitialized || !database || !userId) return [];
 
+    // Check cache first (15-min cache per user)
+    const cacheKey = `userRepliedTo_${userId}_${limit}`;
+    const cached = getCached(cacheKey);
+    if (cached !== null) return cached;
+
     try {
         // Get all replies
         const repliesRef = database.ref('replies');
@@ -638,28 +729,37 @@ async function fetchCommentsUserRepliedTo(userId, limit = 20) {
 
         if (commentIdsWithUserReply.size === 0) return [];
 
-        // Fetch the parent comments
-        const commentsRef = database.ref('comments');
-        const commentsSnapshot = await commentsRef.once('value');
-        const allComments = commentsSnapshot.val();
-
-        if (!allComments) return [];
-
-        // Get comments that user replied to (exclude user's own comments)
+        // Fetch only needed comments instead of all comments
         const repliedComments = [];
-        for (const commentId of commentIdsWithUserReply) {
-            if (allComments[commentId] && allComments[commentId].userId !== userId) {
-                repliedComments.push({
-                    id: commentId,
-                    ...allComments[commentId]
-                });
-            }
-        }
+        const commentIds = Array.from(commentIdsWithUserReply);
+
+        // Batch fetch only the needed comments (max 20)
+        const idsToFetch = commentIds.slice(0, limit * 2); // Fetch extra to account for filtering
+
+        await Promise.all(
+            idsToFetch.map(async (commentId) => {
+                const commentRef = database.ref(`comments/${commentId}`);
+                const commentSnapshot = await commentRef.once('value');
+                const commentData = commentSnapshot.val();
+                if (commentData && commentData.userId !== userId) {
+                    repliedComments.push({
+                        id: commentId,
+                        ...commentData
+                    });
+                }
+            })
+        );
 
         // Sort by timestamp and limit
-        return repliedComments
+        const result = repliedComments
             .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
             .slice(0, limit);
+
+        // Only cache if we have results
+        if (result.length > 0) {
+            setCache(cacheKey, result);
+        }
+        return result;
     } catch (error) {
         console.warn('Failed to fetch comments user replied to:', error.message);
         return [];

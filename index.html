@@ -37,9 +37,46 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <!-- Language Switcher -->
+    <div class="lang-switcher" id="langSwitcher">
+        <button class="lang-btn" id="langBtn">
+            <span class="lang-flag">🇹🇭</span>
+            <span class="lang-code">TH</span>
+            <svg class="lang-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
+        </button>
+        <div class="lang-dropdown" id="langDropdown">
+            <button class="lang-option active" data-lang="th">
+                <span class="lang-flag">🇹🇭</span>
+                <span class="lang-name">ไทย</span>
+            </button>
+            <button class="lang-option" data-lang="en">
+                <span class="lang-flag">🇬🇧</span>
+                <span class="lang-name">English</span>
+            </button>
+            <button class="lang-option" data-lang="zh-CN">
+                <span class="lang-flag">🇨🇳</span>
+                <span class="lang-name">简体中文</span>
+            </button>
+            <button class="lang-option" data-lang="zh-TW">
+                <span class="lang-flag">🇹🇼</span>
+                <span class="lang-name">繁體中文</span>
+            </button>
+            <button class="lang-option" data-lang="ko">
+                <span class="lang-flag">🇰🇷</span>
+                <span class="lang-name">한국어</span>
+            </button>
+            <button class="lang-option" data-lang="ja">
+                <span class="lang-flag">🇯🇵</span>
+                <span class="lang-name">日本語</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Landing Page -->
     <div class="landing-page" id="landingPage">
-        <h1 class="landing-heading">Who's Gonna Be My Next <span class="strikethrough-word"><span class="mistake">Mistake?</span><span class="valentine">Valentine!</span></span></h1>
+        <h1 class="landing-heading" data-i18n="landing.heading">Who's Gonna Be My Next <span class="strikethrough-word"><span class="mistake" data-i18n="landing.mistake">Mistake?</span><span class="valentine" data-i18n="landing.valentine">Valentine!</span></span></h1>
         <div class="spinning-card-container" id="spinningCardContainer">
             <div class="spinning-card-wrapper">
                 <div class="spinning-card" id="spinningCard">
@@ -51,9 +88,9 @@
                     </div>
                 </div>
             </div>
-            <span class="card-click-hint loading-state">กำลังโหลด...</span>
+            <span class="card-click-hint loading-state" data-i18n="landing.loading">กำลังโหลด...</span>
         </div>
-        <p class="landing-instruction">ใครจะเข้ามาในชีวิตคุณช่วงวาเลนไทน์?</p>
+        <p class="landing-instruction" data-i18n="landing.instruction">ใครจะเข้ามาในชีวิตคุณช่วงวาเลนไทน์?</p>
 
         <p class="landing-brand">Pimfahmaprod</p>
         <span class="version-tag">v1.0.0</span>
@@ -71,10 +108,10 @@
     <!-- Card Ranking Panel -->
     <div class="ranking-panel" id="rankingPanel">
         <div class="ranking-header">
-            <span class="ranking-title">ไพ่ยอดนิยม</span>
+            <span class="ranking-title" data-i18n="ranking.title">ไพ่ยอดนิยม</span>
         </div>
         <div class="ranking-list" id="rankingList">
-            <div class="ranking-loading">กำลังโหลด...</div>
+            <div class="ranking-loading" data-i18n="common.loading">กำลังโหลด...</div>
         </div>
     </div>
     <div class="ranking-overlay" id="rankingOverlay"></div>
@@ -86,13 +123,13 @@
                 <div class="header-seal">
                     <span class="header-seal-text">Valentine<br>Tarot</span>
                 </div>
-                <h1 class="title">ใครจะเข้ามาในชีวิตคุณช่วงวาเลนไทน์</h1>
+                <h1 class="title" data-i18n="main.title">ใครจะเข้ามาในชีวิตคุณช่วงวาเลนไทน์</h1>
                 <p class="subtitle">"The Tastemaker Dictionary for Curation"</p>
-                <p class="instruction">เลือกไพ่ 1 ใบ เพื่อดูคำทำนาย</p>
+                <p class="instruction" data-i18n="main.instruction">เลือกไพ่ 1 ใบ เพื่อดูคำทำนาย</p>
             </header>
 
             <div class="card-grid" id="cardGrid">
-                <div class="loading">กำลังโหลดไพ่...</div>
+                <div class="loading" data-i18n="main.loadingCards">กำลังโหลดไพ่...</div>
             </div>
 
             <footer>
@@ -147,7 +184,7 @@
             <!-- 1. Save Image Buttons -->
             <div class="save-section">
                 <div class="save-row">
-                    <span class="save-label-inline">เซฟรูป :</span>
+                    <span class="save-label-inline" data-i18n="result.saveImage">เซฟรูป :</span>
                     <button class="save-btn with-text" onclick="saveImage('ig-story')" title="Instagram Story (9:16)">
                         <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
                         <span>Story</span>
@@ -159,7 +196,7 @@
                     <button class="save-btn icon-only" onclick="saveImage('facebook')" title="Facebook">
                         <svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
                     </button>
-                    <button class="save-btn icon-only" onclick="saveImage('wide')" title="รูปกว้าง">
+                    <button class="save-btn icon-only" onclick="saveImage('wide')" title="รูปกว้าง" data-i18n-title="result.wideImage">
                         <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                     </button>
                 </div>
@@ -168,16 +205,16 @@
             <!-- 2. Share Buttons -->
             <div class="share-section">
                 <div class="save-row">
-                    <span class="save-label-inline">บอกต่อ :</span>
-                    <button class="save-btn icon-only" onclick="shareToFacebook()" title="ส่งทาง Messenger">
+                    <span class="save-label-inline" data-i18n="result.share">บอกต่อ :</span>
+                    <button class="save-btn icon-only" onclick="shareToFacebook()" title="ส่งทาง Messenger" data-i18n-title="result.messenger">
                         <svg viewBox="0 0 28 28"><path d="M14 0C6.268 0 0 5.842 0 13.053c0 4.106 2.007 7.77 5.143 10.163V28l4.638-2.548c1.236.343 2.545.528 3.919.528 7.732 0 14-5.842 14-13.053S21.732 0 14 0zm1.392 17.576l-3.567-3.805-6.962 3.805 7.659-8.132 3.654 3.805 6.875-3.805-7.659 8.132z"/></svg>
                     </button>
-                    <button class="save-btn icon-only" onclick="shareToLine()" title="ส่งทาง LINE">
+                    <button class="save-btn icon-only" onclick="shareToLine()" title="ส่งทาง LINE" data-i18n-title="result.line">
                         <svg viewBox="0 0 24 24"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
                     </button>
-                    <button class="save-btn with-text" onclick="copyLink()" title="คัดลอกลิงก์">
+                    <button class="save-btn with-text" onclick="copyLink()" title="คัดลอกลิงก์" data-i18n-title="result.copyLink">
                         <svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
-                        <span>คัดลอก</span>
+                        <span data-i18n="result.copy">คัดลอก</span>
                     </button>
                 </div>
             </div>
@@ -186,17 +223,17 @@
             <div class="comment-section">
                 <div class="comment-form" id="commentForm">
                     <div class="comment-input-group" id="commentNameGroup">
-                        <label for="commentName">ชื่อของคุณ</label>
-                        <input type="text" id="commentName" maxlength="15" placeholder="ใส่ชื่อ (ไม่เกิน 15 ตัวอักษร)">
+                        <label for="commentName" data-i18n="comment.yourName">ชื่อของคุณ</label>
+                        <input type="text" id="commentName" maxlength="15" data-i18n-placeholder="comment.namePlaceholder" placeholder="ใส่ชื่อ (ไม่เกิน 15 ตัวอักษร)">
                         <span class="char-count"><span id="nameCharCount">0</span>/15</span>
                     </div>
                     <div class="comment-input-group">
-                        <label for="commentText">ความคิดเห็น</label>
-                        <textarea id="commentText" maxlength="250" placeholder="น้อมรับคำทำนายจากแม่หมอพิมพ์ฟ้า"></textarea>
+                        <label for="commentText" data-i18n="comment.label">ความคิดเห็น</label>
+                        <textarea id="commentText" maxlength="250" data-i18n-placeholder="comment.placeholder" placeholder="น้อมรับคำทำนายจากแม่หมอพิมพ์ฟ้า"></textarea>
                         <span class="char-count"><span id="commentCharCount">0</span>/250</span>
                     </div>
                     <button class="comment-submit-btn" id="commentSubmitBtn" onclick="submitComment()">
-                        <span id="commentSubmitText">ส่งความคิดเห็น</span>
+                        <span id="commentSubmitText" data-i18n="comment.submit">ส่งความคิดเห็น</span>
                     </button>
                 </div>
             </div>
@@ -207,19 +244,19 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M20 6L9 17l-5-5"/>
                 </svg>
-                <span id="commentToggleBtnText">น้อมรับคำทำนาย</span>
+                <span id="commentToggleBtnText" data-i18n="result.acceptProphecy">น้อมรับคำทำนาย</span>
             </button>
             <button class="view-comments-btn" id="viewCommentsBtn" onclick="viewCardComments()" style="display: none;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                     <circle cx="12" cy="12" r="3"/>
                 </svg>
-                <span>ส่อง</span>
+                <span data-i18n="result.view">ส่อง</span>
             </button>
         </div>
         <div class="retry-row retry-row-bottom">
-            <span class="retry-text">ยังไม่เอาจริง</span>
-            <button class="result-close" id="resultClose">จับใหม่</button>
+            <span class="retry-text" data-i18n="result.notSerious">ยังไม่เอาจริง</span>
+            <button class="result-close" id="resultClose" data-i18n="result.drawAgain">จับใหม่</button>
         </div>
     </div>
 
@@ -261,7 +298,7 @@
                 <span>Pimfahmaprod</span>
             </a>
             <div class="blessing-line-section" style="--delay: 2.4s">
-                <span class="blessing-line-label">อยากรู้เพิ่มเติม</span>
+                <span class="blessing-line-label" data-i18n="blessing.wantMore">อยากรู้เพิ่มเติม</span>
                 <a href="https://line.me/R/ti/p/@pimfah" target="_blank" class="blessing-line-link" onclick="window.cardCounter && window.cardCounter.trackSocialClick('blessing_line')">
                     <svg viewBox="0 0 24 24"><path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.349 0 .63.285.63.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314"/></svg>
                     <span>@Pimfah</span>
@@ -271,13 +308,13 @@
 
         <!-- Restart button - bottom right -->
         <button class="blessing-restart-btn" id="blessingRestartBtn">
-            <span>เริ่มใหม่</span>
+            <span data-i18n="blessing.restart">เริ่มใหม่</span>
             <span class="restart-arrow">>></span>
         </button>
     </div>
 
     <!-- Copy Toast -->
-    <div class="copy-toast" id="copyToast">คัดลอกลิงก์แล้ว!</div>
+    <div class="copy-toast" id="copyToast" data-i18n="toast.copied">คัดลอกลิงก์แล้ว!</div>
 
     <!-- Background Music -->
     <audio id="bgMusic" src="audio/background.mp3" loop preload="auto" autoplay></audio>
@@ -302,7 +339,7 @@
     <div class="comments-panel" id="commentsPanel">
         <div class="comments-panel-header">
             <div class="comments-panel-title">
-                <h3>เรื่องเล่าจากวงไพ่ ✦</h3>
+                <h3 data-i18n="comments.title">เรื่องเล่าจากวงไพ่ ✦</h3>
                 <span class="comments-panel-user" id="commentsPanelUser">Anonymous</span>
             </div>
             <button class="comments-panel-close" id="commentsPanelClose">
@@ -312,17 +349,17 @@
             </button>
         </div>
         <div class="comments-tabs" id="commentsTabs">
-            <button class="comments-tab active" data-tab="new">ล่าสุด</button>
-            <button class="comments-tab" data-tab="hot">ยอดนิยม</button>
-            <button class="comments-tab" data-tab="mycard" style="display:none;">ไพ่ฉัน</button>
-            <button class="comments-tab" data-tab="me">ของฉัน</button>
+            <button class="comments-tab active" data-tab="new" data-i18n="comments.tabNew">ล่าสุด</button>
+            <button class="comments-tab" data-tab="hot" data-i18n="comments.tabHot">ยอดนิยม</button>
+            <button class="comments-tab" data-tab="mycard" style="display:none;" data-i18n="comments.tabMyCard">ไพ่ฉัน</button>
+            <button class="comments-tab" data-tab="me" data-i18n="comments.tabMine">ของฉัน</button>
             <button class="comments-tab comments-tab-cardview" data-tab="cardview" style="display:none;">
                 <img class="tab-card-preview" src="" alt="">
             </button>
         </div>
         <div class="comments-list" id="commentsList">
             <div class="comments-loading" id="commentsLoading">
-                <span>กำลังโหลด...</span>
+                <span data-i18n="common.loading">กำลังโหลด...</span>
             </div>
         </div>
     </div>

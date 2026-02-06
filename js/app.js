@@ -176,20 +176,20 @@ function updateLangButton() {
         'ja': '🇯🇵'
     };
 
-    const names = {
-        'th': 'ไทย',
-        'en': 'English',
-        'zh-CN': '简体中文',
-        'zh-TW': '繁體中文',
-        'ko': '한국어',
-        'ja': '日本語'
+    const codes = {
+        'th': 'TH',
+        'en': 'EN',
+        'zh-CN': 'CN',
+        'zh-TW': 'TW',
+        'ko': 'KO',
+        'ja': 'JA'
     };
 
     const flagEl = langBtn.querySelector('.lang-flag');
     const codeEl = langBtn.querySelector('.lang-code');
 
     if (flagEl) flagEl.textContent = flags[currentLang] || '🇹🇭';
-    if (codeEl) codeEl.textContent = names[currentLang] || 'ไทย';
+    if (codeEl) codeEl.textContent = codes[currentLang] || 'TH';
 
     // Update active state in dropdown
     document.querySelectorAll('.lang-option').forEach(opt => {

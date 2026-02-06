@@ -2040,7 +2040,7 @@ function initCommentsPanel() {
     const commentsTabs = document.getElementById('commentsTabs');
 
     if (commentsBtn) {
-        commentsBtn.addEventListener('click', openCommentsPanel);
+        commentsBtn.addEventListener('click', () => openCommentsPanel());
     }
 
     if (commentsPanelClose) {
@@ -2123,6 +2123,7 @@ function switchCommentsTab(tabName) {
     displayedCommentIds.clear();
     expandedCommentCard = null;
     navigatedCommentCard = null;
+    isLoadingComments = false; // Reset to ensure fresh load
 
     // Unsubscribe from real-time updates
     if (window.cardCounter && window.cardCounter.unsubscribeFromNewComments) {
@@ -2230,11 +2231,21 @@ function openCommentsPanel(skipLoadComments = false) {
         if (newTab) newTab.classList.add('active');
     }
 
-    // Reset and load comments (subscription happens after load completes)
+    // Reset all state (matching switchCommentsTab)
     commentsLastKey = null;
     commentsHasMore = true;
     displayedCommentIds.clear();
     newestCommentTimestamp = 0;
+    expandedCommentCard = null;
+    navigatedCommentCard = null;
+    isLoadingComments = false;
+
+    // Unsubscribe from any existing real-time updates before loading
+    if (window.cardCounter && window.cardCounter.unsubscribeFromNewComments) {
+        window.cardCounter.unsubscribeFromNewComments();
+    }
+
+    // Load comments directly (same as switchCommentsTab)
     loadComments(true);
 }
 

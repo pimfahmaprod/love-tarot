@@ -524,33 +524,37 @@ async function fetchHotComments(limit = 20) {
     if (!isFirebaseInitialized || !database) return [];
 
     try {
-        // Limit to last 50 comments to reduce bandwidth
-        const commentsRef = database.ref('comments');
-        const snapshot = await commentsRef.orderByKey().limitToLast(50).once('value');
-        const data = snapshot.val();
+        // Fetch replies node to find comments with the most replies
+        const repliesRef = database.ref('replies');
+        const repliesSnapshot = await repliesRef.once('value');
+        const repliesData = repliesSnapshot.val();
 
-        if (!data) return [];
+        if (!repliesData) return [];
 
-        const comments = Object.entries(data).map(([key, value]) => ({
-            id: key,
-            ...value
-        }));
+        // Count replies per comment and sort by count
+        const topCommentIds = Object.entries(repliesData)
+            .map(([commentId, replies]) => ({
+                commentId,
+                replyCount: Object.keys(replies).length
+            }))
+            .filter(c => c.replyCount > 0)
+            .sort((a, b) => b.replyCount - a.replyCount)
+            .slice(0, limit);
 
-        const commentsWithReplies = await Promise.all(
-            comments.map(async (comment) => {
-                const replyCount = await getReplyCount(comment.id);
-                return { ...comment, replyCount };
+        if (topCommentIds.length === 0) return [];
+
+        // Fetch only the top comment details
+        const comments = await Promise.all(
+            topCommentIds.map(async ({ commentId, replyCount }) => {
+                const commentRef = database.ref(`comments/${commentId}`);
+                const snapshot = await commentRef.once('value');
+                const data = snapshot.val();
+                if (!data) return null;
+                return { id: commentId, ...data, replyCount };
             })
         );
 
-        return commentsWithReplies
-            .sort((a, b) => {
-                if (b.replyCount !== a.replyCount) {
-                    return b.replyCount - a.replyCount;
-                }
-                return (b.timestamp || 0) - (a.timestamp || 0);
-            })
-            .slice(0, limit);
+        return comments.filter(c => c !== null);
     } catch (error) {
         console.warn('Failed to fetch hot comments:', error.message);
         return [];

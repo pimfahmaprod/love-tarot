@@ -15,6 +15,7 @@
  * - zh-TW: Traditional Chinese
  * - ko: Korean
  * - ja: Japanese
+ * - fr: French
  *
  * TRANSLATION STRUCTURE:
  * translations[lang].section.key
@@ -733,6 +734,123 @@ const translations = {
             commentCount: "件のコメント",
             noCommentsOnCard: "まだこのカードにコメントがありません",
             noOtherComments: "このカードに他のコメントはありません"
+        }
+    },
+    fr: {
+        landing: {
+            heading: "Who's Gonna Be My Next",
+            mistake: "Mistake?",
+            valentine: "Valentine!",
+            loading: "Chargement...",
+            instruction: "Qui entrera dans votre vie pour la Saint-Valentin ?",
+            clickToDraw: "Touchez la carte pour tirer"
+        },
+        main: {
+            title: "Qui entrera dans votre vie pour la Saint-Valentin ?",
+            instruction: "Choisissez 1 carte pour voir votre prédiction",
+            loadingCards: "Chargement des cartes..."
+        },
+        ranking: {
+            title: "Cartes populaires"
+        },
+        result: {
+            saveImage: "Enregistrer :",
+            share: "Partager :",
+            copy: "Copier",
+            acceptProphecy: "Accepter la prophétie",
+            hideSection: "Masquer",
+            view: "Voir",
+            notSerious: "Oups, main glissée~",
+            drawAgain: "Retirer",
+            wideImage: "Image large",
+            messenger: "Partager via Messenger",
+            line: "Partager via LINE",
+            copyLink: "Copier le lien"
+        },
+        comment: {
+            yourName: "Votre nom",
+            namePlaceholder: "Entrez votre nom (max 15 caractères)",
+            label: "Commentaire",
+            placeholder: "Acceptez la prophétie de la voyante",
+            submit: "Envoyer",
+            sending: "Envoi en cours...",
+            reply: "Répondre",
+            replyPlaceholder: "Écrivez votre réponse...",
+            sendReply: "Envoyer"
+        },
+        comments: {
+            title: "Histoires du cercle de tarot ✦",
+            tabNew: "Récent",
+            tabHot: "Populaire",
+            tabMyCard: "Ma carte",
+            tabMine: "Mes posts",
+            empty: "Pas encore de commentaires",
+            myComments: "Mes commentaires",
+            repliedTo: "Mes réponses",
+            noComments: "Vous n'avez pas encore commenté",
+            goComment: "Allez commenter les cartes des autres !",
+            viewLatest: "Voir les derniers"
+        },
+        blessing: {
+            wantMore: "En savoir plus",
+            restart: "Recommencer"
+        },
+        toast: {
+            copied: "Lien copié !",
+            replySuccess: "Réponse envoyée",
+            submitSuccess: "Envoyé avec succès !",
+            error: "Erreur, veuillez réessayer",
+            systemNotReady: "Système pas prêt, réessayez"
+        },
+        common: {
+            loading: "Chargement...",
+            prophecy: "Prophétie",
+            replies: "Réponses",
+            beFirstReply: "✦ Soyez le premier à répondre",
+            otherComments: "Autres commentaires sur cette carte",
+            loadError: "Impossible de charger les commentaires",
+            noHotComments: "Pas encore de commentaires populaires",
+            tryReply: "Essayez de répondre à un commentaire !",
+            replyCount: "réponses"
+        },
+        time: {
+            justNow: "À l'instant",
+            minutesAgo: "min",
+            hoursAgo: "h",
+            daysAgo: "j"
+        },
+        share: {
+            gotCard: "J'ai tiré la carte",
+            letsRead: "Découvrez votre horoscope amoureux de Saint-Valentin !",
+            title: "Horoscope amoureux Saint-Valentin",
+            copiedForMessenger: "Texte copié ! Collez dans Messenger",
+            copiedText: "Texte copié !"
+        },
+        image: {
+            selectFirst: "Veuillez d'abord choisir une carte",
+            creating: "Création de l'image...",
+            saved: "Image enregistrée !"
+        },
+        sections: {
+            popular: "✦ Populaire",
+            recent: "✦ Récent"
+        },
+        cta: {
+            notAccepted: "Prophétie pas encore acceptée",
+            drawToReceive: "Tirez une carte pour recevoir votre prédiction",
+            goDrawCard: "Allons tirer une carte !",
+            acceptFirst: "Accepter en premier",
+            beFirstComment: "Pas encore de commentaires<br>Soyez le premier à commenter !"
+        },
+        error: {
+            cardLoadFailed: "Impossible de charger les données",
+            cardNotFound: "Carte introuvable",
+            noInterpretation: "Interprétation non trouvée"
+        },
+        cardview: {
+            commentCount: "commentaires",
+            noCommentsOnCard: "Pas encore de commentaires sur cette carte",
+            noOtherComments: "Pas d'autres commentaires sur cette carte"
         }
     }
 };

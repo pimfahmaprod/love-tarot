@@ -199,7 +199,8 @@ function updateLangButton() {
         'zh-CN': '🇨🇳',
         'zh-TW': '🇹🇼',
         'ko': '🇰🇷',
-        'ja': '🇯🇵'
+        'ja': '🇯🇵',
+        'fr': '🇫🇷'
     };
 
     const codes = {
@@ -208,7 +209,8 @@ function updateLangButton() {
         'zh-CN': 'CN',
         'zh-TW': 'TW',
         'ko': 'KO',
-        'ja': 'JA'
+        'ja': 'JA',
+        'fr': 'FR'
     };
 
     const flagEl = langBtn.querySelector('.lang-flag');

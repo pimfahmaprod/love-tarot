@@ -90,6 +90,7 @@ Firebase functions:
 | zh-TW | Traditional Chinese | 🇹🇼 |
 | ko | Korean | 🇰🇷 |
 | ja | Japanese | 🇯🇵 |
+| fr | French | 🇫🇷 |
 
 ## User Flow
 1. **Landing** → Click spinning card

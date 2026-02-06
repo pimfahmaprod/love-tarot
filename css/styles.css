@@ -2357,6 +2357,7 @@ footer {
     border-left-color: var(--burgundy);
     transform: translateX(2px);
     transition: all 0.2s ease;
+    overflow: hidden;
 }
 
 .related-comment-replies {

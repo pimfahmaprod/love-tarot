@@ -1602,8 +1602,7 @@ function goToLandingPage() {
             container.style.top = '';
         });
 
-        // Reshuffle and re-render cards fresh
-        shuffleCards();
+        // Re-render cards fresh (renderCards already shuffles)
         renderCards();
 
         // Reset card grid to stacked state
@@ -1724,8 +1723,7 @@ function resetForNewPick() {
     // Track retry
     if (window.cardCounter) window.cardCounter.trackRetry();
 
-    // Reshuffle and re-render
-    shuffleCards();
+    // Re-render cards (renderCards already shuffles)
     renderCards();
 
     // Reset state

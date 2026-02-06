@@ -2624,17 +2624,15 @@ async function navigateToRelatedComment(commentData) {
             if (oldCard.parentNode) oldCard.remove();
         }
 
-        // Create a duplicated card (don't remove original) and insert in "ล่าสุด" (Recent) section
+        // Create a duplicated card (don't remove original) and insert at the TOP of the list
         const newCard = createCommentCard(commentData, false);
         newCard.classList.add('navigated-card'); // Mark as navigated
 
-        // Find the "ล่าสุด" section header and insert after it
-        const recentHeader = commentsList.querySelector('.comments-section-title.recent');
-        if (recentHeader) {
-            // Insert right after the recent header
-            recentHeader.after(newCard);
+        // Always insert at the very top of the comments list
+        const firstChild = commentsList.firstChild;
+        if (firstChild) {
+            commentsList.insertBefore(newCard, firstChild);
         } else {
-            // Fallback: append to list if no recent section found
             commentsList.appendChild(newCard);
         }
 

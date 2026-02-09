@@ -1081,8 +1081,8 @@ function animateToEllipse() {
     const { radiusX, radiusY, cardWidth, cardHeight, offsetY } = getEllipseParams();
 
     containers.forEach((container, index) => {
-        // Stagger the animation
-        const delay = index * 15;
+        // Stagger the animation - deal from top card (highest z-index) first
+        const delay = (totalCards - 1 - index) * 15;
 
         setTimeout(() => {
             container.classList.remove('stacked');

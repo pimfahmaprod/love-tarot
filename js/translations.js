@@ -157,11 +157,11 @@ const translations = {
             mistake: "Mistake?",
             valentine: "Valentine!",
             loading: "Loading...",
-            instruction: "Who will come into your life this Valentine's?",
+            instruction: "Who will come into your life?",
             clickToDraw: "Tap card to draw"
         },
         main: {
-            title: "Who will come into your life this Valentine's?",
+            title: "Who will come into your life?",
             instruction: "Pick 1 card to see your fortune",
             loadingCards: "Loading cards..."
         },

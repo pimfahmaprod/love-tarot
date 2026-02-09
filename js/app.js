@@ -3548,7 +3548,7 @@ function drawVerticalLayout(ctx, cardImg, width, height) {
     ctx.fillStyle = '#722F37';
     ctx.font = 'bold 64px "Cormorant Garamond", serif';
     ctx.textAlign = 'center';
-    ctx.fillText(currentCardData.name, width / 2, nameY);
+    ctx.fillText(getCardName(currentCardData.name), width / 2, nameY);
 
     // Decorative line under name
     ctx.strokeStyle = 'rgba(114, 47, 55, 0.4)';
@@ -3561,7 +3561,7 @@ function drawVerticalLayout(ctx, cardImg, width, height) {
     // Quote
     ctx.font = 'italic 36px "Cormorant Garamond", serif';
     ctx.fillStyle = 'rgba(114, 47, 55, 0.85)';
-    const quote = `"${currentCardData.quote}"`;
+    const quote = `"${getCardQuote(currentCardData)}"`;
     wrapText(ctx, quote, width / 2, nameY + 90, width - 160, 48);
 
     // Interpretation section
@@ -3583,7 +3583,7 @@ function drawVerticalLayout(ctx, cardImg, width, height) {
     ctx.font = '26px "Prompt", sans-serif';
     ctx.fillStyle = '#722F37';
     const maxInterpretY = height - 180; // Leave space for footer
-    wrapTextWithParagraphsCenter(ctx, currentCardData.interpretation, width / 2, interpretY + 110, width - 160, 38, maxInterpretY);
+    wrapTextWithParagraphsCenter(ctx, getCardInterpretation(currentCardData), width / 2, interpretY + 110, width - 160, 38, maxInterpretY);
 
     // Footer - 2 columns layout with divider
     const iconSize = 26;
@@ -3649,14 +3649,15 @@ function drawSquareLayout(ctx, cardImg, width, height) {
     // Card name - large (with dynamic sizing to fit)
     ctx.fillStyle = '#722F37';
     let nameFontSize = 48;
+    const cardName = getCardName(currentCardData.name);
     ctx.font = `bold ${nameFontSize}px "Cormorant Garamond", serif`;
-    let nameWidth = ctx.measureText(currentCardData.name).width;
+    let nameWidth = ctx.measureText(cardName).width;
     while (nameWidth > textWidth && nameFontSize > 26) {
         nameFontSize -= 2;
         ctx.font = `bold ${nameFontSize}px "Cormorant Garamond", serif`;
-        nameWidth = ctx.measureText(currentCardData.name).width;
+        nameWidth = ctx.measureText(cardName).width;
     }
-    ctx.fillText(currentCardData.name, textX, 195);
+    ctx.fillText(cardName, textX, 195);
 
     // Decorative line
     ctx.strokeStyle = 'rgba(114, 47, 55, 0.4)';
@@ -3669,14 +3670,14 @@ function drawSquareLayout(ctx, cardImg, width, height) {
     // Quote
     ctx.font = 'italic 22px "Cormorant Garamond", serif';
     ctx.fillStyle = 'rgba(114, 47, 55, 0.85)';
-    const quote = `"${currentCardData.quote}"`;
-    wrapTextLeft(ctx, quote, textX, 265, textWidth, 30);
+    const quoteText = `"${getCardQuote(currentCardData)}"`;
+    wrapTextLeft(ctx, quoteText, textX, 265, textWidth, 30);
 
     // Interpretation - full text with bounds (preserve paragraph breaks)
     ctx.font = '17px "Prompt", sans-serif';
     ctx.fillStyle = '#722F37';
     const maxInterpretY = height - safePadding - 100; // Leave space for footer within safe area
-    wrapTextWithParagraphs(ctx, currentCardData.interpretation, textX, 360, textWidth, 25, maxInterpretY);
+    wrapTextWithParagraphs(ctx, getCardInterpretation(currentCardData), textX, 360, textWidth, 25, maxInterpretY);
 
     // Footer - 2 columns layout with divider
     const iconSize = 18;
@@ -3734,14 +3735,15 @@ function drawWideLayout(ctx, cardImg, width, height) {
     // Card name - prominent (with dynamic sizing to fit)
     ctx.fillStyle = '#722F37';
     let nameFontSize = 42;
+    const cardName = getCardName(currentCardData.name);
     ctx.font = `bold ${nameFontSize}px "Cormorant Garamond", serif`;
-    let nameWidth = ctx.measureText(currentCardData.name).width;
+    let nameWidth = ctx.measureText(cardName).width;
     while (nameWidth > textWidth && nameFontSize > 24) {
         nameFontSize -= 2;
         ctx.font = `bold ${nameFontSize}px "Cormorant Garamond", serif`;
-        nameWidth = ctx.measureText(currentCardData.name).width;
+        nameWidth = ctx.measureText(cardName).width;
     }
-    ctx.fillText(currentCardData.name, textX, 125);
+    ctx.fillText(cardName, textX, 125);
 
     // Decorative line
     ctx.strokeStyle = 'rgba(114, 47, 55, 0.4)';
@@ -3754,14 +3756,14 @@ function drawWideLayout(ctx, cardImg, width, height) {
     // Quote
     ctx.font = 'italic 20px "Cormorant Garamond", serif';
     ctx.fillStyle = 'rgba(114, 47, 55, 0.9)';
-    const quote = `"${currentCardData.quote}"`;
-    wrapTextLeft(ctx, quote, textX, 180, textWidth, 26);
+    const quoteText = `"${getCardQuote(currentCardData)}"`;
+    wrapTextLeft(ctx, quoteText, textX, 180, textWidth, 26);
 
     // Interpretation - full text with bounds (preserve paragraph breaks)
     ctx.font = '16px "Prompt", sans-serif';
     ctx.fillStyle = '#722F37';
     const maxInterpretY = height - 90; // Leave space for footer
-    wrapTextWithParagraphs(ctx, currentCardData.interpretation, textX, 260, textWidth, 22, maxInterpretY);
+    wrapTextWithParagraphs(ctx, getCardInterpretation(currentCardData), textX, 260, textWidth, 22, maxInterpretY);
 
     // Footer - 2 columns layout with divider
     const iconSize = 14;
